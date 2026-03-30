@@ -5,7 +5,7 @@ set -e
 # Usage: ./deploy.sh [--no-pull] [--logs]
 
 REMOTE_HOST="tinkertanker@dev.tk.sg"
-REMOTE_DIR="Docker/code-tk-sg"
+REMOTE_DIR="Docker/code.tk.sg"
 
 PULL=true
 SHOW_LOGS=false
@@ -34,8 +34,15 @@ if [ "$PULL" = true ]; then
   ssh "$REMOTE_HOST" "cd $REMOTE_DIR && git pull"
 fi
 
+# Copy docker-compose.yml if it exists locally
+if [ -f docker-compose.yml ]; then
+  echo "==> Copying docker-compose.yml to server..."
+  scp docker-compose.yml "$REMOTE_HOST:$REMOTE_DIR/"
+fi
+
 # Copy production config
 echo "==> Copying production config..."
+scp config.production.js "$REMOTE_HOST:$REMOTE_DIR/"
 ssh "$REMOTE_HOST" "cd $REMOTE_DIR && cp config.production.js config.js"
 
 # Build and restart on server

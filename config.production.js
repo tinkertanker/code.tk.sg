@@ -31,6 +31,7 @@ module.exports = {
 	},
 
 	"documents": {
-		"about": "./about.md"
+		"about": "./about.md",
+		"testfile": "./test.py"
 	}
 };

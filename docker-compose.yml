@@ -7,7 +7,7 @@ services:
       HOST: "0.0.0.0"
       PORT: 7777
       VIRTUAL_PORT: 7777
-      VIRTUAL_HOST: codebeta.tk.sg
+      VIRTUAL_HOST: code.tk.sg
       NODE_ENV: production
     volumes:
       - ./config.js:/app/config.js:ro

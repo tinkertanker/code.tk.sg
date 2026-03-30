@@ -18,6 +18,7 @@ COPY --from=builder /app/server.js ./server.js
 COPY --from=builder /app/lib ./lib
 COPY --from=builder /app/static ./static
 COPY --from=builder /app/about.md ./about.md
+COPY --from=builder /app/test.py ./test.py
 COPY --from=builder /app/example.config.js ./example.config.js
 
 RUN chown -R haste:haste /app

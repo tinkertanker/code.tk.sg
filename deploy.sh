@@ -55,7 +55,7 @@ echo "==> Waiting for containers to start..."
 sleep 5
 
 # Check if containers are running
-if ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose ps" | grep -q "Up\|running"; then
+if ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose ps --format json" | grep -q '"State":"running"'; then
   echo "==> Deploy complete! Containers are running."
 else
   echo "==> Warning: Containers may not have started correctly."

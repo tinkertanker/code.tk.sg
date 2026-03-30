@@ -10,8 +10,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BACKUP_BASE="${BACKUP_BASE:-$SCRIPT_DIR/../backups}"
 REMOTE_HOST="tinkertanker@dev.tk.sg"
-REMOTE_DIR="Docker/code-tk-sg"
-CONTAINER_NAME="code-tk-sg-redis-1"
+REMOTE_DIR="Docker/code.tk.sg"
 
 DATE=$(date +%Y-%m-%d)
 DAY_OF_WEEK=$(date +%u)   # 1=Monday, 7=Sunday
@@ -27,13 +26,29 @@ mkdir -p "$DAILY_DIR" "$WEEKLY_DIR" "$MONTHLY_DIR" "$YEARLY_DIR"
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Redis backup..."
 
-# Trigger a Redis BGSAVE and wait for completion
+cleanup_tmpfile() {
+  if [ -n "${TMPFILE:-}" ] && [ -f "${TMPFILE:-}" ]; then
+    rm -f "$TMPFILE"
+  fi
+}
+
+trap cleanup_tmpfile EXIT
+
+# Trigger a Redis BGSAVE and copy the RDB file
 if [ "${1:-}" = "--remote" ]; then
-  ssh "$REMOTE_HOST" "docker exec $CONTAINER_NAME redis-cli BGSAVE" >/dev/null
-  sleep 2
-  # Copy the dump from the container
   TMPFILE=$(mktemp)
-  ssh "$REMOTE_HOST" "docker cp $CONTAINER_NAME:/data/dump.rdb -" > "$TMPFILE"
+  ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose exec -T redis redis-cli BGSAVE >/dev/null"
+  sleep 2
+  ssh "$REMOTE_HOST" "cd $REMOTE_DIR && CONTAINER_ID=\$(docker compose ps -q redis) && docker cp \$CONTAINER_ID:/data/dump.rdb -" > "$TMPFILE"
+elif [ -f "$SCRIPT_DIR/../docker-compose.yml" ]; then
+  TMPFILE=$(mktemp)
+  (
+    cd "$SCRIPT_DIR/.."
+    docker compose exec -T redis redis-cli BGSAVE >/dev/null
+    sleep 2
+    CONTAINER_ID=$(docker compose ps -q redis)
+    docker cp "$CONTAINER_ID:/data/dump.rdb" "$TMPFILE"
+  )
 else
   # Local backup (development)
   redis-cli BGSAVE >/dev/null 2>&1
@@ -62,11 +77,6 @@ fi
 if [ "$DAY_OF_MONTH" = "01" ] && [ "$MONTH" = "01" ]; then
   cp "$DUMP_FILE" "$YEARLY_DIR/dump-$DATE.rdb"
   echo "  Yearly backup: $YEARLY_DIR/dump-$DATE.rdb"
-fi
-
-# Clean up temp file if remote
-if [ "${1:-}" = "--remote" ]; then
-  rm -f "$TMPFILE"
 fi
 
 # --- Retention cleanup ---

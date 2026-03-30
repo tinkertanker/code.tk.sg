@@ -1,0 +1,39 @@
+services:
+  haste:
+    build: .
+    expose:
+      - 7777
+    environment:
+      HOST: "0.0.0.0"
+      PORT: 7777
+      VIRTUAL_PORT: 7777
+      VIRTUAL_HOST: code.tk.sg
+      NODE_ENV: production
+    volumes:
+      - ./config.js:/app/config.js:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      devtksg:
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      devtksg:
+    restart: always
+
+volumes:
+  redis-data:
+
+networks:
+  devtksg:
+    external: true

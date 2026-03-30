@@ -1,0 +1,40 @@
+{
+	"name": "haste",
+	"version": "0.2.5",
+	"description": "Private Pastebin Server - continued by zneix",
+	"keywords": [
+		"paste",
+		"pastebin",
+		"haste",
+		"hastebin"
+	],
+	"author": {
+		"name": "John Crepezzi",
+		"email": "john.crepezzi@gmail.com",
+		"url": "http://seejohncode.com/"
+	},
+	"main": "server.js",
+	"dependencies": {
+		"@babel/cli": "^7.13.16",
+		"@babel/core": "^7.14.2",
+		"babel-plugin-minify-mangle-names": "^0.5.0",
+		"busboy": "^0.3.1",
+		"express": "^4.17.1",
+		"express-rate-limit": "^5.2.6",
+		"ioredis": "^4.27.2",
+		"mongodb": "^3.6.6",
+		"pg": "^8.6.0",
+		"st": "^2.0.0",
+		"winston": "^3.3.3"
+	},
+	"devDependencies": {
+		"eslint": "^7.26.0",
+		"mocha": "^8.4.0"
+	},
+	"scripts": {
+		"build": "npm install && npx babel --plugins minify-mangle-names --no-comments --minified static/application.js --out-file static/application.min.js",
+		"start": "node server.js",
+		"test": "mocha --recursive",
+		"testformat": "npx eslint ./"
+	}
+}

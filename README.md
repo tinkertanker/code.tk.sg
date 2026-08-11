@@ -1,43 +1,51 @@
-# DISCLAIMER
+# code.tk.sg
 
-This is a continued version of hastebin server with extended development, developed alone by zneix.  
-Original developer abandoned this amazing project and due to pile of unmerged Pull Requests and several security issues with outdated dependencies I decided to rewrite whole project in JavaScript ES6.  
+This private repository contains Tinkercademy's deployment of [Haste](https://github.com/seejohnrun/haste-server), a simple pastebin for sharing code and text at the public [code.tk.sg](https://code.tk.sg) service. Paste data is stored in Redis and expires after one year of inactivity.
 
-**This version is heavily changed, meaning there will be breaking changes in your config if you were running outdated upstream version.**
+## How it runs
 
-# Haste
+- `haste` is the Node.js application, built and run from the `Dockerfile`.
+- `redis` uses Redis 7 (Alpine) in `docker-compose.yml`, with its data in the `redis-data` volume.
+- `config.production.js` selects Redis database 2 and a 31536000-second expiry. `deploy.sh` copies it to `config.js`, then builds and restarts the Compose stack.
+- The application listens on port 7777 inside the Docker network. The host's reverse proxy provides the public `code.tk.sg` endpoint.
 
-Haste is an open-source pastebin software written in Node.JS, which is easily installable in any network.  
-It can be backed by either redis or filesystem and has a very easy adapter interface for other storage systems.  
-A publicly available version can be found at [haste.zneix.eu](https://haste.zneix.eu)
+## Deployment
 
-Major design objectives:
+The deployment host is `dev.tk.sg`, at `Docker/code.tk.sg`. From the repository, `./deploy.sh` pulls the latest revision, copies the Compose and production configuration files, and rebuilds the containers. Use `./deploy.sh --no-pull` when the server already has the desired revision; `./deploy.sh --logs` follows the resulting Compose logs.
 
-* Be really pretty
-* Be really simple
-* Be easy to set up and use
+Keep `config.js` local and private. It is ignored by Git; use `config.production.js` as the tracked production template.
 
-I also rewrote Command Line utility [haste-client](https://github.com/zneix/haste-client), which can do things like:
+## Backups
 
-`cat file | haste`
+[`scripts/backup.sh`](scripts/backup.sh) triggers a Redis `BGSAVE` and copies the resulting RDB snapshot. By default it writes under `backups/` beside the repository (the `BACKUP_BASE` environment variable can override this). `backups/` and RDB files are ignored by Git.
 
-it outputs URL to a paste containing contents of `file`. Check [repo](https://github.com/zneix/haste-client) for more details.
+The production cron stores these snapshots on the same host as Redis. This protects against accidental volume deletion, but not loss of the host or deployment directory. Copy important snapshots off-host if that risk must be covered.
 
+The retention policy is:
 
-# Installation
+- daily snapshots for 7 days;
+- Sunday snapshots for 28 days;
+- first-of-month snapshots for 365 days;
+- first-of-January snapshots forever.
 
-Full installation and config instructions can be found in [`docs` directory](https://github.com/zneix/haste-server/tree/master/docs).
+For a local Docker checkout, run `./scripts/backup.sh`. If no `docker-compose.yml` is present, the script falls back to a standalone local Redis instance. Add `--remote` to run the Docker backup on `tinkertanker@dev.tk.sg`.
 
+The production cron entry is:
 
-## Authors
+```cron
+0 2 * * * cd /home/tinkertanker-server/Docker/code.tk.sg && ./scripts/backup.sh >> /home/tinkertanker-server/Docker/code.tk.sg/backups/backup.log 2>&1
+```
 
-Project continued by zneix <zzneix@gmail.com>
+Validate an RDB before relying on it:
 
-Original Code by John Crepezzi <john.crepezzi@gmail.com>
+```bash
+redis-check-rdb backups/daily/dump-YYYY-MM-DD.rdb
+```
 
+### Restore
 
-## Other components:
+Restore requires brief downtime. Stop the application first so it cannot write, take a safety snapshot from the still-running Redis service, then stop Redis. Replace Redis's `dump.rdb` with the validated backup, start Redis, and confirm it contains the expected data. Start the application and check a recovered document and the public service. Keep the safety snapshot until the restore has been verified; do not overwrite the only copy of live data.
 
-* jQuery: MIT/GPL license
-* highlight.js: Copyright © 2006, Ivan Sagalaev
-* highlightjs-coffeescript: WTFPL - Copyright © 2011, Dmytrii Nagirniak
+## Attribution and licence
+
+Haste was created by John Crepezzi and continued by zneix. This deployment retains the upstream open-source licence and notices. See [`about.md`](about.md) for the service disclaimer and attribution details.

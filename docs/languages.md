@@ -1,4 +1,7 @@
 # Supported Languages
+
+> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). Tinkercademy added this note; the list below describes upstream, not a verified language list for this fork. Our restored frontend bundles highlight.js 9.12.0 and its own extension mappings, so support can differ. See the [README](../README.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
+
 Haste-server supports all 38 "common" languages according to [highlight.js](https://highlightjs.org/), the syntax library used for this project.
 Any extra languages originally put into this project have remained as well for a total of 47 languages.
 

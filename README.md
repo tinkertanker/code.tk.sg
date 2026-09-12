@@ -1,6 +1,15 @@
 # code.tk.sg
 
-This private repository contains Tinkercademy's deployment of [Haste](https://github.com/seejohnrun/haste-server), a simple pastebin for sharing code and text at the public [code.tk.sg](https://code.tk.sg) service. Paste data is stored in Redis and expires after one year of inactivity.
+Tinkercademy's deployment fork of **Haste**, a simple pastebin for sharing code and text at [code.tk.sg](https://code.tk.sg). It is based on [zneix/haste-server](https://github.com/zneix/haste-server) v0.2.5, a continuation of John Crepezzi's Haste. We did not write the original pastebin application.
+
+## Upstream and our changes
+
+- **Upstream authors:** John Crepezzi created Haste; zneix and other contributors continued haste-server. The server, storage adapters, key generators, tests, and original browser interface come from that lineage. Brian Dawson is credited for the key design.
+- **Original project:** [seejohnrun/haste-server](https://github.com/seejohnrun/haste-server) is retained here as a historical link (unavailable when checked). [zneix/haste-server](https://github.com/zneix/haste-server) is our direct upstream.
+- **Our fork:** Tinkercademy maintains the code.tk.sg deployment, Docker packaging, deployment and backup scripts, production configuration, branded frontend adaptations, and Amp orb setup. Our production Redis configuration expires pastes after one year of inactivity.
+- **Documentation:** this README describes our fork and operations. The guides for [installation](docs/install.md), [storage](docs/storage.md), [key generators](docs/generators.md), and [languages](docs/languages.md) were inherited from zneix/haste-server; each is labelled as upstream reference material. [`about.md`](about.md) separates our service policies from adapted Haste usage text.
+
+The inherited guides describe the upstream version, not necessarily the restored frontend or current deployment. For this fork's local setup, use Node 20 (matching the Dockerfile), run `npm ci`, copy `example.config.js` to `config.js` if it does not already exist, run `npm run build`, then `npm start`. The example uses local file storage; the production Compose configuration below is specific to our infrastructure.
 
 ## How it runs
 
@@ -66,4 +75,6 @@ Restore requires brief downtime. Stop the application first so it cannot write, 
 
 ## Attribution and licence
 
-Haste was created by John Crepezzi and continued by zneix. This deployment retains the upstream open-source licence and notices. See [`about.md`](about.md) for the service disclaimer and attribution details.
+The Haste application is MIT-licensed; we retain John Crepezzi's copyright and the full [`LICENSE`](LICENSE). Tinkercademy's code and documentation changes are provided under the same MIT terms. Third-party components retain their own licences; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the bundled highlighting library, theme, and other credits.
+
+Software licensing does not grant permission to use Tinkercademy's name or logo to imply affiliation or endorsement. Review or replace deployment-specific branding when running your own service.

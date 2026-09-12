@@ -1,5 +1,7 @@
 # Storage
 
+> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). Tinkercademy added this note; the text below is retained as upstream reference. This fork uses `config.js`, not `config.json`. Our production Redis configuration and backup procedures are documented in the [README](../README.md); not every upstream adapter is installed or validated by our deployment.
+
 Here's a list of all supported document store systems.  
 One of these is meant to be set in `config.json` as `storage` object.  
 Default type is [file](#file) with save directory at `./data`.  

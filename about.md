@@ -2,7 +2,16 @@
 
 This Haste server is brought to you by [Tinkercademy](https://tinkercademy.com).
 
-# Haste
+This is our deployment fork of Haste, created by John Crepezzi and continued by
+zneix and other contributors. Tinkercademy maintains this service and its
+deployment adaptations, not the original Haste application.
+
+# Haste — adapted upstream introduction and usage
+
+The introduction and usage sections below are adapted from Haste's original
+documentation. First-person descriptions are the upstream authors' words.
+The example service URL has been changed to code.tk.sg. The console-client
+instructions are inherited guidance, not clients maintained by Tinkercademy.
 
 Sharing code is a good thing, and it should be _really_ easy to do it.
 A lot of times, I want to show you something I'm seeing - and that's where we
@@ -40,6 +49,11 @@ right now.
   * osx: you will need to have an up to date version of Xcode
   * linux: you will need to have rubygems and ruby-devel installed
 
+# code.tk.sg service policies — Tinkercademy
+
+The following duration and privacy policies apply to our service, not to all
+Haste deployments.
+
 ## Duration
 
 Pastes will stay for 1 year from their last view.  They may be removed earlier
@@ -52,14 +66,20 @@ that obeys "robots.txt", there should be no great expectation of privacy.  Post
 things at your own risk. Not responsible for any loss of data or removed
 pastes.
 
-## Open Source
+# Source and credits
 
-Haste can easily be installed behind your network, and it's all open source!
+Haste is open-source software under the MIT licence. This fork preserves the
+original authors' notices; third-party components retain their own licences.
 
-* [haste-client](https://github.com/seejohnrun/haste-client)
-* [haste-server](https://github.com/tinkertanker/code.tk.sg)
+* [Original Haste client](https://github.com/seejohnrun/haste-client)
+* [Upstream haste-server, continued by zneix](https://github.com/zneix/haste-server)
+* [Tinkercademy's deployment fork](https://github.com/tinkertanker/code.tk.sg)
 
-## Author
+## Credits
 
 Code by John Crepezzi <john.crepezzi@gmail.com>
 Key Design by Brian Dawson <bridawson@gmail.com>
+
+haste-server continued by zneix and contributors.
+code.tk.sg deployment, branding adaptations, and service policies maintained by
+Tinkercademy.

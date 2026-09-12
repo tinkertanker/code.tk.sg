@@ -6,7 +6,6 @@ node_modules
 .eslintignore
 .eslintrc.json
 README.md
-LICENSE
 docs
 test
 *.zip

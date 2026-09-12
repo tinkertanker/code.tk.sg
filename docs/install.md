@@ -1,5 +1,7 @@
 # Short instructions
 
+> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). This attribution note was added by Tinkercademy; the guide below is retained as historical reference, including its old Node 14 and PM2 instructions. For this fork's Node 20 setup and deployment, use the [README](../README.md).
+
 1. Install [node](https://nodejs.org/en/)
 2. Build with `npm run-script build`
 3. Rename `example.config.js` to `config.js` (Defaults are enough)

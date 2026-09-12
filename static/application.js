@@ -1,4 +1,4 @@
-/* global $, hljs, window, document */
+/* global $, hljs, qrcode, window, document */
 
 ///// represents a single document
 
@@ -373,6 +373,8 @@ haste.prototype.toggleShare = function() {
   $('#box3').hide();
   $('#share-url').val(window.location.href);
   $('#share-status').text('');
+  $('#share-qr').empty().prop('hidden', true);
+  $('#show-qr').attr('aria-expanded', 'false');
   $('#share-panel').prop('hidden', false);
   $('#box2 .share').attr('aria-expanded', 'true');
   $('#copy-link').focus();
@@ -381,6 +383,17 @@ haste.prototype.toggleShare = function() {
 haste.prototype.configureShare = function() {
   var _this = this;
   $('#share-url').click(function() { this.select(); });
+  $('#show-qr').click(function() {
+    var expanded = $(this).attr('aria-expanded') !== 'true';
+    if (expanded) {
+      var qr = qrcode(0, 'M');
+      qr.addData($('#share-url').val());
+      qr.make();
+      $('#share-qr').html(qr.createSvgTag({ scalable: true, title: 'QR code for this paste link' }));
+    }
+    $('#share-qr').prop('hidden', !expanded);
+    $(this).attr('aria-expanded', String(expanded));
+  });
   $('#copy-link').click(async function() {
     var url = $('#share-url').val();
     try {

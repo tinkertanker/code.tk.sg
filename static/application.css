@@ -233,6 +233,28 @@ textarea {
 	border-radius: 0 6px 6px 0;
 }
 
+#show-qr { --icon: url(icons/qr-code.svg); }
+
+#show-qr[aria-expanded="true"] {
+	color: #f3777d;
+	background: #302024;
+}
+
+#share-qr {
+	margin: 12px auto;
+	width: 240px;
+	max-width: 100%;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #fff;
+}
+
+#share-qr svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
 #key [hidden] { display: none; }
 
 #share-status {

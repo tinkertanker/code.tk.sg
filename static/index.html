@@ -6,11 +6,13 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="stylesheet" type="text/css" href="solarized_dark.css"/>
-		<link rel="stylesheet" type="text/css" href="application.css?v=share-1"/>
+		<link rel="stylesheet" type="text/css" href="application.css?v=share-qr-3"/>
 
 		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 		<script type="text/javascript" src="highlight.min.js"></script>
-		<script type="text/javascript" src="application.min.js?v=share-1"></script>
+		<!-- qrcode-generator 1.4.4, MIT; generated locally, no external QR service. -->
+		<script type="text/javascript" src="vendor/qrcode.js"></script>
+		<script type="text/javascript" src="application.min.js?v=share-qr-2"></script>
 
 		<meta name="robots" content="noindex,nofollow"/>
 
@@ -63,8 +65,10 @@
 				<div class="share-link">
 					<input id="share-url" type="text" readonly />
 					<button id="copy-link" aria-label="Copy link" title="Copy link"><span class="icon" aria-hidden="true"></span></button>
+					<button id="show-qr" aria-label="Show QR code" title="Show QR code" aria-expanded="false" aria-controls="share-qr"><span class="icon" aria-hidden="true"></span></button>
 				</div>
 				<p id="share-status" role="status"></p>
+				<div id="share-qr" hidden></div>
 			</section>
 		</div>
 

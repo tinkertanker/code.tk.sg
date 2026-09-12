@@ -1,4 +1,4 @@
-/* global $, hljs, window, document */
+/* global $, hljs, qrcode, window, document */
 
 ///// represents a single document
 
@@ -89,19 +89,15 @@ haste_document.prototype.save = function(data, callback) {
 
 ///// represents the paste application
 
-var haste = function(appName, options) {
+var haste = function(appName) {
   this.appName = appName;
   this.$textarea = $('textarea');
   this.$box = $('#box');
   this.$code = $('#box code');
   this.$linenos = $('#linenos');
-  this.options = options;
   this.configureShortcuts();
   this.configureButtons();
-  // If twitter is disabled, hide the button
-  if (!options.twitter) {
-    $('#box2 .twitter').hide();
-  }
+  this.configureShare();
 };
 
 // Set the page title - include the appName
@@ -126,21 +122,22 @@ haste.prototype.lightKey = function() {
 
 // Show the full key
 haste.prototype.fullKey = function() {
-  this.configureKey(['new', 'duplicate', 'twitter', 'raw']);
+  this.configureKey(['new', 'duplicate', 'share', 'raw']);
 };
 
 // Set the key up for certain things to be enabled
 haste.prototype.configureKey = function(enable) {
+  this.closeShare();
   var $this, i = 0;
   $('#box2 .function').each(function() {
     $this = $(this);
     for (i = 0; i < enable.length; i++) {
       if ($this.hasClass(enable[i])) {
-        $this.addClass('enabled');
+        $this.addClass('enabled').prop('disabled', false);
         return true;
       }
     }
-    $this.removeClass('enabled');
+    $this.removeClass('enabled').prop('disabled', true);
   });
 };
 
@@ -210,6 +207,7 @@ haste.prototype.removeLineNumbers = function() {
 
 // Load a document and show it
 haste.prototype.loadDocument = function(key) {
+  this.configureKey(['new']);
   // Split the key up
   var parts = key.split('.', 2);
   // Ask for what we want
@@ -270,7 +268,7 @@ haste.prototype.configureButtons = function() {
       label: 'Save',
       shortcutDescription: 'control + s',
       shortcut: function(evt) {
-        return evt.ctrlKey && (evt.keyCode === 83);
+        return evt.ctrlKey && !evt.shiftKey && (evt.keyCode === 83);
       },
       action: function() {
         if (_this.$textarea.val().replace(/^\s+|\s+$/g, '') !== '') {
@@ -302,7 +300,7 @@ haste.prototype.configureButtons = function() {
     },
     {
       $where: $('#box2 .raw'),
-      label: 'Just Text',
+      label: 'Raw text',
       shortcut: function(evt) {
         return evt.ctrlKey && evt.shiftKey && evt.keyCode === 82;
       },
@@ -312,14 +310,14 @@ haste.prototype.configureButtons = function() {
       }
     },
     {
-      $where: $('#box2 .twitter'),
-      label: 'Twitter',
+      $where: $('#box2 .share'),
+      label: 'Share',
       shortcut: function(evt) {
-        return _this.options.twitter && _this.doc.locked && evt.shiftKey && evt.ctrlKey && evt.keyCode == 84;
+        return _this.doc.locked && evt.shiftKey && evt.ctrlKey && evt.keyCode === 83;
       },
-      shortcutDescription: 'control + shift + t',
+      shortcutDescription: 'control + shift + s',
       action: function() {
-        window.open('https://twitter.com/share?url=' + encodeURI(window.location.href));
+        _this.toggleShare();
       }
     }
   ];
@@ -337,16 +335,15 @@ haste.prototype.configureButton = function(options) {
     }
   });
   // Show the label
-  options.$where.on('mouseenter', function() {
+  options.$where.on('mouseenter focus', function() {
+    if (!$('#share-panel').prop('hidden')) return;
     $('#box3 .label').text(options.label);
     $('#box3 .shortcut').text(options.shortcutDescription || '');
     $('#box3').show();
-    $(this).append($('#pointer').remove().show());
   });
   // Hide the label
-  options.$where.on('mouseleave', function() {
+  options.$where.on('mouseleave blur', function() {
     $('#box3').hide();
-    $('#pointer').hide();
   });
 };
 
@@ -357,11 +354,69 @@ haste.prototype.configureShortcuts = function() {
     var button;
     for (var i = 0 ; i < _this.buttons.length; i++) {
       button = _this.buttons[i];
-      if (button.shortcut && button.shortcut(evt)) {
+      if (button.$where.hasClass('enabled') && button.shortcut && button.shortcut(evt)) {
         evt.preventDefault();
         button.action();
         return;
       }
+    }
+  });
+};
+
+haste.prototype.closeShare = function() {
+  $('#share-panel').prop('hidden', true);
+  $('#box2 .share').attr('aria-expanded', 'false');
+};
+
+haste.prototype.toggleShare = function() {
+  if (!this.doc.locked) return;
+  if (!$('#share-panel').prop('hidden')) {
+    this.closeShare();
+    return;
+  }
+  $('#box3').hide();
+  $('#share-url').val(window.location.href);
+  $('#share-status').text('');
+  $('#share-qr').empty().prop('hidden', true);
+  $('#show-qr').attr('aria-expanded', 'false');
+  $('#share-panel').prop('hidden', false);
+  $('#box2 .share').attr('aria-expanded', 'true');
+  $('#copy-link').focus();
+};
+
+haste.prototype.configureShare = function() {
+  var _this = this;
+  $('#share-url').click(function() { this.select(); });
+  $('#show-qr').click(function() {
+    var expanded = $(this).attr('aria-expanded') !== 'true';
+    if (expanded) {
+      var qr = qrcode(0, 'M');
+      qr.addData($('#share-url').val());
+      qr.make();
+      $('#share-qr').html(qr.createSvgTag({ scalable: true, title: 'QR code for this paste link' }));
+    }
+    $('#share-qr').prop('hidden', !expanded);
+    $(this).attr('aria-expanded', String(expanded));
+  });
+  $('#copy-link').click(async function() {
+    var url = $('#share-url').val();
+    try {
+      if (!window.navigator.clipboard) throw new Error('Clipboard unavailable');
+      await window.navigator.clipboard.writeText(url);
+      $('#share-status').text('Link copied!');
+    } catch (err) {
+      $('#share-url').focus().select();
+      $('#share-status').text('Select and copy the link above.');
+    }
+  });
+  $(document).on('click focusin', function(evt) {
+    if (!$(evt.target).closest('#share-panel, #box2 .share').length) _this.closeShare();
+  });
+  $(document).keydown(function(evt) {
+    if (evt.keyCode === 27 && !$('#share-panel').prop('hidden')) {
+      _this.closeShare();
+      $('#box2 .share').focus();
+      $('#box3').hide();
     }
   });
 };

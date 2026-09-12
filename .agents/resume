@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# No per-user authentication or repair is required. Dependencies are snapshotted;
+# start development services on demand with `amp orb services ensure`.

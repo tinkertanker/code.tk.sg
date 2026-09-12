@@ -13,3 +13,4 @@ backups
 npm-debug.log
 static/*.min.js
 config.js
+.amp/portals/*

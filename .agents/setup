@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+echo 'Preparing system tools and Redis (development/test only)'
+SECONDS=0
+missing=()
+for package in ca-certificates curl xz-utils redis-server; do
+  dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed' || missing+=("$package")
+done
+if ((${#missing[@]})); then
+  sudo apt-get update -qq
+  sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}"
+fi
+echo "System tools ready (${SECONDS}s)"
+
+# Match the Dockerfile's Node 20 major without replacing the orb's own Node.
+node_version=20.20.0
+node_home="$HOME/.local/share/code-tk-node/node-v${node_version}-linux-$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')"
+if [[ ! -x "$node_home/bin/node" ]]; then
+  echo "Installing Node $node_version"
+  archive="$(basename "$node_home").tar.xz"
+  download_dir="$(mktemp -d)"
+  trap 'rm -rf "$download_dir"' EXIT
+  curl -fsSL "https://nodejs.org/dist/v${node_version}/${archive}" -o "$download_dir/$archive"
+  curl -fsSL "https://nodejs.org/dist/v${node_version}/SHASUMS256.txt" -o "$download_dir/SHASUMS256.txt"
+  (cd "$download_dir"; grep "  $archive$" SHASUMS256.txt | sha256sum --check -)
+  mkdir -p "$(dirname "$node_home")"
+  tar -xJf "$download_dir/$archive" -C "$(dirname "$node_home")"
+fi
+export PATH="$node_home/bin:$PATH"
+
+# Supervised services and subsequent agent shells also need this toolchain.
+profile_marker="# code.tk.sg orb Node toolchain"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+case "\$PWD/" in
+  "$repo_root/"*)
+    case ":\$PATH:" in
+      *":$node_home/bin:"*) ;;
+      *) export PATH="$node_home/bin:\$PATH" ;;
+    esac
+    ;;
+esac
+EOF
+fi
+
+echo "Installing locked dependencies with $(node --version) / npm $(npm --version)"
+SECONDS=0
+npm ci --include=dev --prefer-offline --no-audit --no-fund
+echo "Dependencies ready (${SECONDS}s)"
+
+echo 'Building browser bundle and preparing local configuration'
+SECONDS=0
+# npm run build also runs an unlocked npm install; invoke its compiler directly.
+./node_modules/.bin/babel --plugins minify-mangle-names --no-comments --minified static/application.js --out-file static/application.min.js
+if [[ ! -f config.js ]]; then
+  cp -- example.config.js config.js
+fi
+echo "Build and configuration ready (${SECONDS}s)"

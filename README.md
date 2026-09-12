@@ -15,6 +15,24 @@ The deployment host is `dev.tk.sg`, at `Docker/code.tk.sg`. From the repository,
 
 Keep `config.js` local and private. It is ignored by Git; use `config.production.js` as the tracked production template.
 
+## Amp orbs
+
+`.agents/setup` installs Node 20.20.0 (matching Docker's Node 20 major), Redis,
+and the locked npm dependencies, then builds the browser bundle. It preserves an
+existing `config.js`; otherwise it copies the file-storage example. No production
+credentials or Docker daemon are needed. Amp snapshots the prepared environment.
+The resume hook intentionally performs no installs or service startup.
+
+Run `amp orb services ensure` to start the app and an isolated, non-persistent
+Redis instance on loopback port 6379 for tests. The command prints the app's
+reviewable portal URL. Run `npm test` for the test suite and `npm run testformat`
+for lint. Redis and app processes are supervised separately from setup and resume.
+
+Known baseline issues: the three Redis tests use the old callback API and time
+out against the async store implementation; use `npm test -- --exit` to let the
+runner exit despite their unclosed clients. Lint also reports existing formatting
+errors. These are application/test issues, not missing orb dependencies.
+
 ## Backups
 
 [`scripts/backup.sh`](scripts/backup.sh) triggers a Redis `BGSAVE` and copies the resulting RDB snapshot. By default it writes under `backups/` beside the repository (the `BACKUP_BASE` environment variable can override this). `backups/` and RDB files are ignored by Git.

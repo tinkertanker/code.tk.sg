@@ -2,14 +2,15 @@
 
 	<head>
 
-		<title>hastebin</title>
+		<title>code.tk.sg</title>
 		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="stylesheet" type="text/css" href="solarized_dark.css"/>
-		<link rel="stylesheet" type="text/css" href="application.css"/>
+		<link rel="stylesheet" type="text/css" href="application.css?v=share-1"/>
 
 		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 		<script type="text/javascript" src="highlight.min.js"></script>
-		<script type="text/javascript" src="application.min.js"></script>
+		<script type="text/javascript" src="application.min.js?v=share-1"></script>
 
 		<meta name="robots" content="noindex,nofollow"/>
 
@@ -31,7 +32,7 @@
 			}, 1000);
 			// Construct app and load initial path
 			$(function() {
-				app = new haste('hastebin', { twitter: true });
+				app = new haste('code.tk.sg');
 				handlePop({ target: window });
 			});
 		</script>
@@ -42,26 +43,34 @@
 		<ul id="messages"></ul>
 
 		<div id="key">
-		  <div id="pointer" style="display:none;"></div>
 			<div id="box1">
-				<a href="/about.md" class="logo"></a>
+				<a href="https://tinkercademy.com" class="logo" aria-label="Visit Tinkercademy"><img src="/tinkercademy.png" alt="" />code.tk.sg</a>
+				<a href="https://github.com/tinkertanker/code.tk.sg" class="github" aria-label="View code.tk.sg on GitHub" title="View on GitHub"><span class="icon" aria-hidden="true"></span></a>
 			</div>
-			<div id="box2">
-				<button class="save function button-picture">Save</button>
-				<button class="new function button-picture">New</button>
-				<button class="duplicate function button-picture">Duplicate & Edit</button>
-				<button class="raw function button-picture">Just Text</button>
-				<button class="twitter function button-picture">Twitter</button>
+			<div id="box2" role="group" aria-label="Paste actions">
+				<button class="save function" aria-label="Save"><span class="icon" aria-hidden="true"></span></button>
+				<button class="new function" aria-label="New"><span class="icon" aria-hidden="true"></span></button>
+				<button class="duplicate function" aria-label="Duplicate & edit"><span class="icon" aria-hidden="true"></span></button>
+				<button class="raw function" aria-label="Raw text"><span class="icon" aria-hidden="true"></span></button>
+				<button class="share function" aria-label="Share" aria-expanded="false" aria-controls="share-panel"><span class="icon" aria-hidden="true"></span></button>
 			</div>
-			<div id="box3" style="display:none;">
+			<div id="box3" role="tooltip" style="display:none;">
 				<div class="label"></div>
 				<div class="shortcut"></div>
 			</div>
+			<section id="share-panel" aria-label="Share paste link" hidden>
+				<label class="sr-only" for="share-url">Paste link</label>
+				<div class="share-link">
+					<input id="share-url" type="text" readonly />
+					<button id="copy-link" aria-label="Copy link" title="Copy link"><span class="icon" aria-hidden="true"></span></button>
+				</div>
+				<p id="share-status" role="status"></p>
+			</section>
 		</div>
 
 		<div id="linenos"></div>
 		<pre id="box" style="display:none;" class="hljs" tabindex="0"><code></code></pre>
-		<textarea spellcheck="false" style="display:none;"></textarea>
+		<textarea aria-label="Paste text" spellcheck="false" style="display:none;"></textarea>
 
 	</body>
 

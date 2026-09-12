@@ -31,7 +31,7 @@ haste_document.prototype.load = function(key, callback, lang) {
           high = { value: _this.htmlEscape(res.data) };
         }
         else if (lang) {
-          high = hljs.highlight(lang, res.data);
+          high = hljs.highlight(res.data, { language: lang });
         }
         else {
           high = hljs.highlightAuto(res.data);
@@ -78,7 +78,7 @@ haste_document.prototype.save = function(data, callback) {
     },
     error: function(res) {
       try {
-        callback($.parseJSON(res.responseText));
+        callback(JSON.parse(res.responseText));
       }
       catch (e) {
         callback({message: 'Something went wrong!'});
@@ -170,8 +170,12 @@ haste.extensionMap = {
   lua: 'lua', pas: 'delphi', java: 'java', cpp: 'cpp', cc: 'cpp', m: 'objectivec',
   vala: 'vala', sql: 'sql', sm: 'smalltalk', lisp: 'lisp', ini: 'ini',
   diff: 'diff', bash: 'bash', sh: 'bash', tex: 'tex', erl: 'erlang', hs: 'haskell',
-  md: 'markdown', txt: '', coffee: 'coffee', json: 'javascript',
-  swift: 'swift'
+  md: 'markdown', txt: '', coffee: 'coffeescript', json: 'json', swift: 'swift',
+  apache: 'apache', c: 'c', cs: 'csharp', dpr: 'delphi', graphql: 'graphql',
+  http: 'http', kt: 'kotlin', less: 'less', lsp: 'lisp', mk: 'makefile',
+  nginx: 'nginx', phptemp: 'php-template', properties: 'properties',
+  pyrepl: 'python-repl', r: 'r', rs: 'rust', sc: 'scala', scss: 'scss',
+  shell: 'shell', ts: 'typescript', vbnet: 'vbnet', wasm: 'wasm', yaml: 'yaml'
 };
 
 // Look up the extension preferred for a type
@@ -326,21 +330,21 @@ haste.prototype.configureButtons = function() {
 
 haste.prototype.configureButton = function(options) {
   // Handle the click action
-  options.$where.click(function(evt) {
+  options.$where.on('click', function(evt) {
     evt.preventDefault();
     if (!options.clickDisabled && $(this).hasClass('enabled')) {
       options.action();
     }
   });
   // Show the label
-  options.$where.mouseenter(function() {
+  options.$where.on('mouseenter', function() {
     $('#box3 .label').text(options.label);
     $('#box3 .shortcut').text(options.shortcutDescription || '');
     $('#box3').show();
     $(this).append($('#pointer').remove().show());
   });
   // Hide the label
-  options.$where.mouseleave(function() {
+  options.$where.on('mouseleave', function() {
     $('#box3').hide();
     $('#pointer').hide();
   });
@@ -349,7 +353,7 @@ haste.prototype.configureButton = function(options) {
 // Configure keyboard shortcuts for the textarea
 haste.prototype.configureShortcuts = function() {
   var _this = this;
-  $(document.body).keydown(function(evt) {
+  $(document.body).on('keydown', function(evt) {
     var button;
     for (var i = 0 ; i < _this.buttons.length; i++) {
       button = _this.buttons[i];
@@ -365,7 +369,7 @@ haste.prototype.configureShortcuts = function() {
 ///// Tab behavior in the textarea - 2 spaces per tab
 $(function() {
 
-  $('textarea').keydown(function(evt) {
+  $('textarea').on('keydown', function(evt) {
     if (evt.keyCode === 9) {
       evt.preventDefault();
       var myValue = '  ';

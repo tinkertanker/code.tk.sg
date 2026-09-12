@@ -8,45 +8,30 @@ winston.remove(winston.transports.Console);
 const RedisDocumentStore = require('../lib/document_stores/redis');
 
 describe('redis_document_store', function(){
+	let store;
 
-	/* reconnect to redis on each test */
-	afterEach(function(){
-		if (RedisDocumentStore.client){
-			RedisDocumentStore.client.quit();
-			RedisDocumentStore.client = false;
-		}
+	afterEach(async function(){
+		if (store) await store.client.quit();
 	});
 
 	describe('set', function(){
 
-		it('should be able to set a key and have an expiration set', function(done){
-			let store = new RedisDocumentStore({ expire: 10 });
-			store.set('hello1', 'world', function(){
-				RedisDocumentStore.client.ttl('hello1', function(err, res){
-					assert.ok(res > 1);
-					done();
-				});
-			});
+		it('should be able to set a key and have an expiration set', async function(){
+			store = new RedisDocumentStore({ expire: 10 });
+			await store.set('hello1', 'world');
+			assert.ok(await store.client.ttl('hello1') > 1);
 		});
 
-		it('should not set an expiration when told not to', function(done){
-			let store = new RedisDocumentStore({ expire: 10 });
-			store.set('hello2', 'world', function(){
-				RedisDocumentStore.client.ttl('hello2', function(err, res){
-					assert.equal(-1, res);
-					done();
-				});
-			}, true);
+		it('should not set an expiration when told not to', async function(){
+			store = new RedisDocumentStore({ expire: 10 });
+			await store.set('hello2', 'world', true);
+			assert.equal(-1, await store.client.ttl('hello2'));
 		});
 
-		it('should not set an expiration when expiration is off', function(done){
-			let store = new RedisDocumentStore({ expire: false });
-			store.set('hello3', 'world', function(){
-				RedisDocumentStore.client.ttl('hello3', function(err, res){
-					assert.equal(-1, res);
-					done();
-				});
-			});
+		it('should not set an expiration when expiration is off', async function(){
+			store = new RedisDocumentStore({ expire: false });
+			await store.set('hello3', 'world');
+			assert.equal(-1, await store.client.ttl('hello3'));
 		});
 
 	});

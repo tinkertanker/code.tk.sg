@@ -1,62 +1,66 @@
-# Supported Languages
+# Supported languages
 
-> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). Tinkercademy added this note; the list below describes upstream, not a verified language list for this fork. Our restored frontend bundles highlight.js 9.12.0 and its own extension mappings, so support can differ. See the [README](../README.md) and [third-party notices](../THIRD_PARTY_NOTICES.md).
+This guide is maintained by Tinkercademy for this fork. It replaces the inherited
+zneix/haste-server language table after the browser-library security update.
 
-Haste-server supports all 38 "common" languages according to [highlight.js](https://highlightjs.org/), the syntax library used for this project.
-Any extra languages originally put into this project have remained as well for a total of 47 languages.
-
-Below is a table of every supported language and it's shorthand if it has one. The shorthand can be used as a file extension.
-(For example https://haste.zneix.eu/ovanazeyad.rust could be re-written as https://haste.zneix.eu/ovanazeyad.rs).
-It is also perfectly valid to just use the name of the language (https://haste.zneix.eu/sadf.haskell)
-
-If the library guesses the language wrong you can replace the file extension with the correct language to force highlighting for that language
+The browser bundle contains highlight.js 11.12.0's 36 common languages plus
+14 languages retained for compatibility with this Haste deployment. To force
+a language instead of automatic detection, append either its name or the
+short extension below to a paste URL (for example, `/paste-key.rs`). Use
+`.txt` to disable highlighting.
 
 | Language | Extension |
 |----------|-----------|
-| Apache Config | apache
-| Bash | sh
-| C | c
-|  C-like foundation grammar<br>for C/C++ grammars | clike
-| CoffeeScript | coffee
-| C++ | cpp
-| C# | cs
-| CSS | css
-| Delphi | dpr
-| Diff | diff
-| Erlang | erl
-| Go | go
-| Haskell | hs
-| HTTP | http
-| TOML/INI | ini
-| Java | java
-| JavaScript | js
-| JSON | json
-| Kotlin | kt
-| LaTeX | tex
-| Less | less
-| Lisp | lsp
-| Lua | lua
-| Makefile | mk
-| Markdown | md
-| Nginx config | nginx
-| Objective-C | mm
-| Perl | pl
-| PHP | php 
-| PHP Template | phptemp
-| Plain text | txt
-| .properties | properties
-| Python | py
-| Python REPL | pyrepl
-| Ruby | rb
-| Rust | rs
-| Scala | sc
-| SCSS | scss
-| Shell Session | shell
-| Smalltalk | sm
-| SQL | sql
-| Swift | swift
-| TypeScript | ts
-| Vala | vala
-| VBScript | vbs
-| XML | xml 
-| YAML | yaml
+| Apache config | `apache` |
+| Bash | `sh` |
+| C | `c` |
+| C++ | `cpp` |
+| C# | `cs` |
+| CoffeeScript | `coffee` |
+| CSS | `css` |
+| Delphi | `dpr` |
+| Diff | `diff` |
+| Erlang | `erl` |
+| Go | `go` |
+| GraphQL | `graphql` |
+| Haskell | `hs` |
+| HTTP | `http` |
+| INI/TOML | `ini` |
+| Java | `java` |
+| JavaScript | `js` |
+| JSON | `json` |
+| Kotlin | `kt` |
+| LaTeX | `tex` |
+| Less | `less` |
+| Lisp | `lsp` |
+| Lua | `lua` |
+| Makefile | `mk` |
+| Markdown | `md` |
+| Nginx config | `nginx` |
+| Objective-C | `m` |
+| Perl | `pl` |
+| PHP | `php` |
+| PHP template | `phptemp` |
+| Plain text | `txt` |
+| Java properties | `properties` |
+| Python | `py` |
+| Python REPL | `pyrepl` |
+| R | `r` |
+| Ruby | `rb` |
+| Rust | `rs` |
+| Scala | `sc` |
+| SCSS | `scss` |
+| Shell session | `shell` |
+| Smalltalk | `sm` |
+| SQL | `sql` |
+| Swift | `swift` |
+| TypeScript | `ts` |
+| Vala | `vala` |
+| VB.NET | `vbnet` |
+| VBScript | `vbs` |
+| WebAssembly | `wasm` |
+| XML/HTML | `xml` |
+| YAML | `yaml` |
+
+The full language name also works. Some highlight.js aliases, such as `html`,
+`toml`, and `shellsession`, are accepted in addition to this table.

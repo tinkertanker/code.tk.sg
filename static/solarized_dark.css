@@ -13,7 +13,8 @@ Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmai
 }
 
 .hljs-comment,
-.hljs-quote {
+.hljs-quote,
+.hljs-tag {
   color: #586e75;
 }
 
@@ -57,6 +58,8 @@ Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmai
 .hljs-symbol,
 .hljs-bullet,
 .hljs-subst,
+.hljs-operator,
+.hljs-punctuation,
 .hljs-meta,
 .hljs-meta .hljs-keyword,
 .hljs-selector-attr,
@@ -73,6 +76,11 @@ Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmai
 
 .hljs-formula {
   background: #073642;
+}
+
+.hljs-code,
+.hljs-template-tag {
+  color: #859900;
 }
 
 .hljs-emphasis {

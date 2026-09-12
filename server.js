@@ -4,6 +4,9 @@ const st = require('st');
 const app = require('express')();
 const expressRateLimit = require('express-rate-limit');
 
+// Paste routes do not use query parameters; do not parse untrusted queries.
+app.set('query parser', false);
+
 const DocumentHandler = require('./lib/document_handler');
 const HasteUtils = require('./lib/util');
 

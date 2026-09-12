@@ -5,7 +5,7 @@ module.exports = {
 
 	//length of random characters in link that's generated on document save
 	"keyLength": 10,
-	//max allowed paste length - 0 for unlimited
+	//max allowed paste size in UTF-8 bytes - 0 for unlimited (not recommended publicly)
 	"maxLength": 400000,
 
 	//algorithm used to generate random characters

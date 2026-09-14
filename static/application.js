@@ -125,6 +125,12 @@ haste.prototype.fullKey = function() {
   this.configureKey(['new', 'duplicate', 'share', 'raw']);
 };
 
+haste.prototype.setDirty = function(dirty) {
+  $('#box2 .save')
+    .toggleClass('dirty', dirty)
+    .attr('aria-label', dirty ? 'Save (unsaved changes)' : 'Save');
+};
+
 // Set the key up for certain things to be enabled
 haste.prototype.configureKey = function(enable) {
   this.closeShare();
@@ -151,6 +157,7 @@ haste.prototype.newDocument = function(hideHistory) {
   }
   this.setTitle();
   this.lightKey();
+  this.setDirty(false);
   this.$textarea.val('').show('fast', function() {
     this.focus();
   });
@@ -218,6 +225,7 @@ haste.prototype.loadDocument = function(key) {
       _this.$code.html(ret.value);
       _this.setTitle(ret.key);
       _this.fullKey();
+      _this.setDirty(false);
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
       _this.addLineNumbers(ret.lineCount);
@@ -253,6 +261,7 @@ haste.prototype.lockDocument = function() {
       }
       window.history.pushState(null, _this.appName + '-' + ret.key, file);
       _this.fullKey();
+      _this.setDirty(false);
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
       _this.addLineNumbers(ret.lineCount);
@@ -324,6 +333,9 @@ haste.prototype.configureButtons = function() {
   for (var i = 0; i < this.buttons.length; i++) {
     this.configureButton(this.buttons[i]);
   }
+  this.$textarea.on('input', function() {
+    _this.setDirty(true);
+  });
 };
 
 haste.prototype.configureButton = function(options) {
@@ -452,6 +464,7 @@ $(function() {
         this.value += myValue;
         this.focus();
       }
+      $(this).trigger('input');
     }
   });
 

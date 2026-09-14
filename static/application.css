@@ -110,6 +110,7 @@ textarea {
 }
 
 #box2 .function {
+	position: relative;
 	width: 44px;
 	height: 44px;
 	display: grid;
@@ -138,6 +139,19 @@ textarea {
 .raw { --icon: url(icons/file-text.svg); }
 .share { --icon: url(icons/share.svg); }
 #copy-link { --icon: url(icons/copy.svg); }
+
+#box2 .save.dirty::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	bottom: 4px;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #f3777d;
+	box-shadow: 0 0 6px #f3777dcc;
+	transform: translateX(-50%);
+}
 
 #key button:not(:disabled) {
 	cursor: pointer;

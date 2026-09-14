@@ -11,10 +11,29 @@ agent-browser wait 'textarea'
 agent-browser eval '(() => {
   if (!document.querySelector(".share").disabled) throw Error("Draft sharing must be disabled");
   if (!document.querySelector("#share-panel").hidden) throw Error("Menu must start closed");
+  if (document.querySelector(".save").classList.contains("dirty")) throw Error("New draft must start clean");
 })()'
 agent-browser fill textarea 'const message = "toolbar regression test";'
+agent-browser eval '(() => {
+  const save = document.querySelector(".save");
+  if (!save.classList.contains("dirty")) throw Error("Editing must show dirty indicator");
+  if (save.getAttribute("aria-label") !== "Save (unsaved changes)") throw Error("Dirty state must be accessible");
+})()'
 agent-browser click '.save'
 agent-browser wait '.share.enabled'
+agent-browser eval '(async () => {
+  const save = document.querySelector(".save");
+  if (save.classList.contains("dirty")) throw Error("Saving must clear dirty indicator");
+  if (save.getAttribute("aria-label") !== "Save") throw Error("Saved paste must have clean accessible label");
+  const key = location.pathname.slice(1).split(".", 1)[0];
+  app.setDirty(true);
+  app.loadDocument(key);
+  for (let i = 0; i < 50 && save.classList.contains("dirty"); i++) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  if (save.classList.contains("dirty")) throw Error("Loading a saved paste must clear dirty indicator");
+  if (save.getAttribute("aria-label") !== "Save") throw Error("Loaded paste must have clean accessible label");
+})()'
 agent-browser click '.share'
 agent-browser eval '(async () => {
   const check = (value, message) => { if (!value) throw Error(message); };
@@ -27,6 +46,7 @@ agent-browser eval '(async () => {
   check(input.value === location.href && location.pathname !== "/", "Share saved URL, including extension");
   check(document.activeElement.id === "copy-link", "Opening moves focus into panel");
   check(document.querySelector(".save").disabled, "Saved paste cannot save again");
+  check(!document.querySelector(".save").classList.contains("dirty"), "Saving clears dirty indicator");
   let copied;
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async url => { copied = url; } } });
   document.querySelector("#copy-link").click();

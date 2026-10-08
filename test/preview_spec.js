@@ -46,4 +46,10 @@ describe('link previews', function(){
 		ok(line);
 		ok(line[1].length < 100);
 	});
+
+	it('keeps highlighting the lines after a clipped line', function(){
+		const data = 'print("' + 'x'.repeat(100) + ' \\(a + b)")\n// comment\n';
+		const svg = preview.buildSvg('abc', data, 'swift');
+		ok(svg.includes('fill="#586e75">// comment</tspan>'));
+	});
 });

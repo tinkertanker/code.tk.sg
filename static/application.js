@@ -96,7 +96,9 @@ var haste = function(appName) {
   this.configureShortcuts();
   this.configureButtons();
   this.configureShare();
+  this.configureMore();
   this.configureWrapToggle();
+  this.configureTextSize();
   var _this = this;
   $(window).on('resize', function() { _this.fitKeySpacer(); });
 };
@@ -118,12 +120,17 @@ haste.prototype.showMessage = function(msg, cls) {
 
 // Show the light key
 haste.prototype.lightKey = function() {
-  this.configureKey(['new', 'save']);
+  this.configureKey(['save', 'new', 'more']);
 };
 
 // Show the full key
 haste.prototype.fullKey = function() {
-  this.configureKey(['new', 'duplicate', 'share', 'raw']);
+  this.configureKey(['copy', 'share', 'duplicate', 'new', 'more']);
+  // Downloads keep the extension in the address bar so the file opens in the right editor
+  var file = window.location.pathname.slice(1);
+  if (file.indexOf('.') === -1) file += '.txt';
+  $('#raw-link').attr('href', '/raw/' + this.doc.key);
+  $('#download-link').attr({ href: '/raw/' + this.doc.key, download: file });
 };
 
 haste.prototype.setDirty = function(dirty) {
@@ -134,7 +141,8 @@ haste.prototype.setDirty = function(dirty) {
 
 // Set the key up for certain things to be enabled
 haste.prototype.configureKey = function(enable) {
-  this.closeShare();
+  this.closePanels();
+  $('#more-panel .saved-only').prop('hidden', enable.indexOf('copy') === -1);
   var $this, i = 0;
   $('#box2 .function').each(function() {
     $this = $(this);
@@ -243,20 +251,81 @@ haste.prototype.fitKeySpacer = function() {
 // Toggle whether saved code wraps around the toolbar or runs underneath it
 haste.prototype.configureWrapToggle = function() {
   var _this = this;
-  var $toggle = $('#key .wrap-toggle');
+  var $toggle = $('#wrap-toggle');
   var apply = function(wrap) {
     $('body').toggleClass('key-overlay', !wrap);
-    $toggle.attr('aria-pressed', wrap ? 'true' : 'false');
+    $toggle.prop('checked', wrap);
     _this.fitKeySpacer();
   };
   var wrap = true;
   try { wrap = window.localStorage.getItem('wrapAroundKey') !== 'false'; } catch (e) { /* storage unavailable */ }
   apply(wrap);
-  $toggle.on('click', function() {
-    wrap = $toggle.attr('aria-pressed') !== 'true';
+  $toggle.on('change', function() {
+    wrap = $toggle.prop('checked');
     try { window.localStorage.setItem('wrapAroundKey', wrap ? 'true' : 'false'); } catch (e) { /* storage unavailable */ }
     apply(wrap);
   });
+};
+
+// Text size steps in pixels; 13px is the default
+haste.textSizes = [10, 11, 13, 15, 17, 20, 24, 28, 34];
+
+// Let people make the code larger, e.g. for projecting in class
+haste.prototype.configureTextSize = function() {
+  var _this = this;
+  var sizes = haste.textSizes;
+  var index = sizes.indexOf(13);
+  try {
+    var saved = sizes.indexOf(parseInt(window.localStorage.getItem('textSize'), 10));
+    if (saved !== -1) index = saved;
+  } catch (e) { /* storage unavailable */ }
+  var apply = function() {
+    document.documentElement.style.setProperty('--code-size', sizes[index] + 'px');
+    $('#text-size').text(Math.round(sizes[index] / 13 * 100) + '%');
+    $('#text-smaller').prop('disabled', index === 0);
+    $('#text-larger').prop('disabled', index === sizes.length - 1);
+    _this.fitKeySpacer();
+  };
+  var step = function(delta) {
+    index = Math.max(0, Math.min(sizes.length - 1, index + delta));
+    try { window.localStorage.setItem('textSize', String(sizes[index])); } catch (e) { /* storage unavailable */ }
+    apply();
+  };
+  apply();
+  $('#text-smaller').on('click', function() { step(-1); });
+  $('#text-larger').on('click', function() { step(1); });
+};
+
+// Copy the whole paste exactly as saved, without line numbers
+haste.prototype.copyAll = async function() {
+  if (!this.doc.locked) return;
+  var data = this.doc.data;
+  var copied = false;
+  try {
+    if (!window.navigator.clipboard) throw new Error('Clipboard unavailable');
+    await window.navigator.clipboard.writeText(data);
+    copied = true;
+  } catch (err) {
+    // Clipboard API needs a secure context; fall back to a hidden textarea
+    var $temp = $('<textarea class="sr-only" readonly aria-hidden="true"></textarea>').val(data).appendTo('body');
+    $temp[0].select();
+    try { copied = document.execCommand('copy'); } catch (e) { copied = false; }
+    $temp.remove();
+  }
+  var $button = $('#box2 .copy');
+  clearTimeout(this.copiedTimer);
+  if (copied) {
+    $button.addClass('copied').find('.text').text('Copied!');
+    var lines = data.split('\n').length;
+    $('#key-status').text('Copied all ' + lines + (lines === 1 ? ' line' : ' lines'));
+    this.copiedTimer = setTimeout(function() {
+      $button.removeClass('copied').find('.text').text('Copy all');
+      $('#key-status').text('');
+    }, 2000);
+  }
+  else {
+    this.showMessage('Could not copy. Select the text and copy it manually.', 'error');
+  }
 };
 
 // Remove the line numbers
@@ -358,14 +427,10 @@ haste.prototype.configureButtons = function() {
       }
     },
     {
-      $where: $('#box2 .raw'),
-      label: 'Raw text',
-      shortcut: function(evt) {
-        return evt.ctrlKey && evt.shiftKey && evt.keyCode === 82;
-      },
-      shortcutDescription: 'control + shift + r',
+      $where: $('#box2 .copy'),
+      label: 'Copy all',
       action: function() {
-        window.location.href = '/raw/' + _this.doc.key;
+        _this.copyAll();
       }
     },
     {
@@ -377,6 +442,14 @@ haste.prototype.configureButtons = function() {
       shortcutDescription: 'control + shift + s',
       action: function() {
         _this.toggleShare();
+      }
+    },
+    {
+      $where: $('#box2 .more'),
+      label: 'More options',
+      shortcutDescription: 'text size, wrapping, download',
+      action: function() {
+        _this.toggleMore();
       }
     }
   ];
@@ -398,7 +471,9 @@ haste.prototype.configureButton = function(options) {
   });
   // Show the label
   options.$where.on('mouseenter focus', function() {
-    if (!$('#share-panel').prop('hidden')) return;
+    if ($('#share-panel, #more-panel').filter(':not([hidden])').length) return;
+    // Labelled buttons without a shortcut need no tooltip
+    if (options.$where.hasClass('primary') && !options.shortcutDescription) return;
     $('#box3 .label').text(options.label);
     $('#box3 .shortcut').text(options.shortcutDescription || '');
     $('#box3').show();
@@ -430,12 +505,49 @@ haste.prototype.closeShare = function() {
   $('#box2 .share').attr('aria-expanded', 'false');
 };
 
+haste.prototype.closeMore = function() {
+  $('#more-panel').prop('hidden', true);
+  $('#box2 .more').attr('aria-expanded', 'false');
+};
+
+haste.prototype.closePanels = function() {
+  this.closeShare();
+  this.closeMore();
+};
+
+haste.prototype.toggleMore = function() {
+  if (!$('#more-panel').prop('hidden')) {
+    this.closeMore();
+    return;
+  }
+  this.closeShare();
+  $('#box3').hide();
+  $('#more-panel').prop('hidden', false);
+  $('#box2 .more').attr('aria-expanded', 'true');
+  $('#text-smaller:not(:disabled), #text-larger').first().focus();
+};
+
+haste.prototype.configureMore = function() {
+  var _this = this;
+  $(document).on('click focusin', function(evt) {
+    if (!$(evt.target).closest('#more-panel, #box2 .more').length) _this.closeMore();
+  });
+  $(document).keydown(function(evt) {
+    if (evt.keyCode === 27 && !$('#more-panel').prop('hidden')) {
+      _this.closeMore();
+      $('#box2 .more').focus();
+      $('#box3').hide();
+    }
+  });
+};
+
 haste.prototype.toggleShare = function() {
   if (!this.doc.locked) return;
   if (!$('#share-panel').prop('hidden')) {
     this.closeShare();
     return;
   }
+  this.closeMore();
   $('#box3').hide();
   $('#share-url').val(window.location.href);
   $('#share-status').text('');

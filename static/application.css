@@ -1,6 +1,11 @@
+:root {
+	--code-size: 13px; /* set from the text size menu */
+	--gutter: calc(var(--code-size) * 2.3 + 20px);
+}
+
 body {
 	background: #000000;
-	padding: 20px 50px;
+	padding: 20px 50px 20px var(--gutter);
 	margin: 0px;
 }
 
@@ -16,7 +21,8 @@ textarea {
 	font-family: monospace;
 	outline: none;
 	resize: none;
-	font-size: 13px;
+	font-size: var(--code-size);
+	tab-size: 4;
 }
 
 /* the line numbers */
@@ -27,8 +33,8 @@ textarea {
 	position: absolute;
 	top: 20px;
 	left: 0px;
-	width: 30px; /* 30 to get 20 away from box */
-	font-size: 13px;
+	width: calc(var(--gutter) - 20px);
+	font-size: var(--code-size);
 	font-family: monospace;
 	text-align: right;
 }
@@ -41,7 +47,7 @@ textarea {
 	width: 100%;
 	border: 0px;
 	outline: none;
-	font-size: 13px;
+	font-size: var(--code-size);
   overflow: inherit;
 }
 
@@ -52,6 +58,7 @@ textarea {
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	counter-reset: line;
+	tab-size: 4;
 }
 
 /* empty float sized by fitKeySpacer so text wraps around the toolbar */
@@ -79,7 +86,7 @@ body.key-overlay #box .key-spacer {
 	content: counter(line);
 	position: absolute;
 	right: calc(100% + 20px);
-	width: 30px;
+	white-space: nowrap;
 	color: #7d7d7d;
 	text-align: right;
 	user-select: none;
@@ -92,7 +99,7 @@ body.key-overlay #box .key-spacer {
 	top: 16px;
 	right: 16px;
 	z-index: 1000;
-	width: 230px;
+	min-width: 230px;
 	background: #141518;
 	border: 1px solid #32353b;
 	border-radius: 10px;
@@ -130,40 +137,8 @@ body.key-overlay #box .key-spacer {
 	object-fit: contain;
 }
 
-.key-links {
-	display: flex;
-}
-
-.github, .wrap-toggle {
-	--icon: url(icons/github.svg);
-	display: grid;
-	place-items: center;
-	flex: 0 0 26px;
-	height: 36px;
-	color: #a3a7b0;
-	border-radius: 6px;
-}
-
-.github:hover, .wrap-toggle:hover {
-	color: #f2f2f3;
-	background: #292c32;
-}
-
-.wrap-toggle {
-	--icon: url(icons/wrap-text.svg);
-	padding: 0;
-	border: 0;
-	background: transparent;
-	font: inherit;
-}
-
-.wrap-toggle .icon {
-	width: 18px;
-	height: 18px;
-}
-
-.wrap-toggle[aria-pressed="true"] {
-	color: #f3777d;
+#box2 {
+	gap: 2px;
 }
 
 #box2 .function {
@@ -177,6 +152,41 @@ body.key-overlay #box .key-spacer {
 	border: 0;
 	border-radius: 7px;
 	color: #e7e8eb;
+}
+
+/* buttons that don't apply right now are hidden rather than greyed out */
+#box2 .function:disabled {
+	display: none;
+}
+
+/* the main action for the current state: Save for drafts, Copy all for saved pastes */
+#box2 .primary {
+	display: flex;
+	gap: 7px;
+	width: auto;
+	margin: 5px 6px 5px 0;
+	height: 34px;
+	padding: 0 13px 0 11px;
+	background: #f3777d;
+	color: #1b1012;
+	font: inherit;
+	font-size: 14px;
+	font-weight: bold;
+	white-space: nowrap;
+}
+
+#box2 .primary .icon {
+	width: 17px;
+	height: 17px;
+}
+
+#box2 .function.primary.enabled:hover {
+	background: #f68f94;
+}
+
+#box2 .copy.copied, #box2 .copy.copied.enabled:hover {
+	--icon: url(icons/check.svg);
+	background: #8fd19e;
 }
 
 .icon {
@@ -193,36 +203,36 @@ body.key-overlay #box .key-spacer {
 .save { --icon: url(icons/save.svg); }
 .new { --icon: url(icons/file-plus.svg); }
 .duplicate { --icon: url(icons/copy-plus.svg); }
-.raw { --icon: url(icons/file-text.svg); }
+.copy { --icon: url(icons/copy.svg); }
+.more { --icon: url(icons/ellipsis.svg); }
+#raw-link { --icon: url(icons/file-text.svg); }
+#download-link { --icon: url(icons/download.svg); }
+.github { --icon: url(icons/github.svg); }
 .share { --icon: url(icons/share.svg); }
 #copy-link { --icon: url(icons/copy.svg); }
 
 #box2 .save.dirty::after {
 	content: "";
 	position: absolute;
-	left: 50%;
-	bottom: 4px;
-	width: 6px;
-	height: 6px;
+	right: -3px;
+	top: -3px;
+	width: 8px;
+	height: 8px;
+	border: 2px solid #141518;
 	border-radius: 50%;
-	background: #f3777d;
-	box-shadow: 0 0 6px #f3777dcc;
-	transform: translateX(-50%);
+	background: #fff;
 }
 
 #key button:not(:disabled) {
 	cursor: pointer;
 }
 
-#box2 .function:disabled {
-	color: #62666e;
-}
-
 #box2 .function.enabled:hover, #share-panel button:hover {
 	background: #292c32;
 }
 
-#box2 .share:hover:not(:disabled), #box2 .share[aria-expanded="true"] {
+#box2 .share:hover:not(:disabled), #box2 .share[aria-expanded="true"],
+#box2 .more[aria-expanded="true"] {
 	color: #f3777d;
 	background: #302024;
 }
@@ -232,7 +242,7 @@ body.key-overlay #box .key-spacer {
 	outline-offset: 3px;
 }
 
-#box3, #share-panel {
+#box3, #share-panel, #more-panel {
 	position: absolute;
 	top: calc(100% + 12px);
 	right: 0;
@@ -328,6 +338,120 @@ body.key-overlay #box .key-spacer {
 
 #key [hidden] { display: none; }
 
+#more-panel {
+	box-sizing: border-box;
+	width: 260px;
+	max-width: calc(100vw - 32px);
+	padding: 6px;
+	font-size: 14px;
+}
+
+#more-panel .menu-row, #more-panel .menu-links a {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 44px;
+	padding: 0 10px;
+	border-radius: 6px;
+}
+
+#more-panel .menu-row {
+	justify-content: space-between;
+}
+
+#more-panel label.menu-row {
+	cursor: pointer;
+}
+
+#more-panel label.menu-row:hover, #more-panel .menu-links a:hover {
+	background: #292c32;
+}
+
+.menu-links {
+	margin-top: 6px;
+	padding-top: 6px;
+	border-top: 1px solid #303238;
+}
+
+#more-panel .menu-links a, #more-panel .menu-links a:visited {
+	color: #e7e8eb;
+	text-decoration: none;
+}
+
+.menu-links .icon {
+	width: 18px;
+	height: 18px;
+	color: #a3a7b0;
+}
+
+.stepper {
+	display: flex;
+	align-items: center;
+	border: 1px solid #42464f;
+	border-radius: 6px;
+	overflow: hidden;
+}
+
+.stepper button {
+	width: 38px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	background: #25282e;
+	color: #e7e8eb;
+	font: inherit;
+	font-weight: bold;
+}
+
+.stepper button:hover:not(:disabled) {
+	background: #33363d;
+}
+
+.stepper button:disabled {
+	color: #62666e;
+}
+
+#text-size {
+	min-width: 48px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: #c1c5cd;
+}
+
+/* checkbox drawn as a switch */
+#wrap-toggle {
+	appearance: none;
+	position: relative;
+	flex: 0 0 auto;
+	width: 36px;
+	height: 20px;
+	margin: 0;
+	border-radius: 10px;
+	background: #42464f;
+	cursor: pointer;
+	transition: background 0.15s;
+}
+
+#wrap-toggle::before {
+	content: "";
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: #e7e8eb;
+	transition: transform 0.15s;
+}
+
+#wrap-toggle:checked {
+	background: #f3777d;
+}
+
+#wrap-toggle:checked::before {
+	transform: translateX(16px);
+}
+
 #share-status {
 	font-size: 13px;
 	line-height: 1.5;
@@ -346,8 +470,9 @@ body.key-overlay #box .key-spacer {
 }
 
 @media (max-width: 600px) {
-	body { padding: 152px 20px 20px 40px; }
-	#linenos { top: 152px; }
+	:root { --gutter: calc(var(--code-size) * 2.3 + 10px); }
+	body { padding: 152px 20px 20px var(--gutter); }
+	#linenos { top: 152px; width: calc(var(--gutter) - 10px); }
 	#box .line::before { right: calc(100% + 10px); }
 	#key { top: 12px; right: 12px; }
 }

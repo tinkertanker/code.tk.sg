@@ -12,6 +12,8 @@ agent-browser eval '(() => {
   if (!document.querySelector(".share").disabled) throw Error("Draft sharing must be disabled");
   if (!document.querySelector("#share-panel").hidden) throw Error("Menu must start closed");
   if (document.querySelector(".save").classList.contains("dirty")) throw Error("New draft must start clean");
+  if (getComputedStyle(document.querySelector(".copy")).display !== "none") throw Error("Drafts must hide Copy all");
+  if (!document.querySelector("#download-link").hidden) throw Error("Drafts must hide download");
 })()'
 agent-browser fill textarea 'const message = "toolbar regression test";'
 agent-browser eval '(() => {
@@ -26,6 +28,7 @@ agent-browser eval '(async () => {
   if (save.classList.contains("dirty")) throw Error("Saving must clear dirty indicator");
   if (save.getAttribute("aria-label") !== "Save") throw Error("Saved paste must have clean accessible label");
   const key = location.pathname.slice(1).split(".", 1)[0];
+  window.savedPath = location.pathname;
   app.setDirty(true);
   app.loadDocument(key);
   for (let i = 0; i < 50 && save.classList.contains("dirty"); i++) {
@@ -82,4 +85,45 @@ agent-browser eval '(async () => {
   check(panel.hidden && share.disabled, "Duplicating dismisses menu and disables draft sharing");
   check(document.querySelector("textarea").value === "const message = \"toolbar regression test\";", "Duplicate preserves contents");
   return "PASS: toolbar states, exact URL, clipboard success/failure, QR toggle/reset, keyboard and dismissal";
+})()'
+agent-browser eval '(async () => {
+  const check = (value, message) => { if (!value) throw Error(message); };
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  history.pushState(null, "", window.savedPath);
+  app.loadDocument(window.savedPath.slice(1));
+  for (let i = 0; i < 50 && !document.querySelector(".copy.enabled"); i++) await new Promise(r => setTimeout(r, 10));
+  const copy = document.querySelector(".copy");
+  check(copy.classList.contains("enabled") && getComputedStyle(copy).display !== "none", "Saved paste shows Copy all");
+  check(getComputedStyle(document.querySelector(".save")).display === "none", "Saved paste hides Save");
+  let copied;
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async text => { copied = text; } } });
+  copy.click();
+  await tick(); await tick();
+  check(copied === app.doc.data, "Copy all copies the exact paste");
+  check(copy.textContent === "Copied!", "Copy all confirms");
+  const more = document.querySelector(".more");
+  const panel = document.querySelector("#more-panel");
+  check(panel.hidden, "More menu starts closed");
+  more.click();
+  check(!panel.hidden && more.getAttribute("aria-expanded") === "true", "More menu opens");
+  check(!document.querySelector("#download-link").hidden, "Saved paste offers download");
+  check(document.querySelector("#download-link").download === location.pathname.slice(1).replace(/^([^.]*)$/, "$1.txt"), "Download keeps extension");
+  check(document.querySelector("#raw-link").getAttribute("href") === "/raw/" + app.doc.key, "Raw link points at paste");
+  const size = () => getComputedStyle(document.querySelector("#box")).fontSize;
+  const before = size();
+  document.querySelector("#text-larger").click();
+  check(size() !== before && document.querySelector("#text-size").textContent === "115%", "Text size grows");
+  document.querySelector("#text-smaller").click();
+  check(size() === before, "Text size shrinks back");
+  const wrap = document.querySelector("#wrap-toggle");
+  wrap.click();
+  check(document.body.classList.contains("key-overlay") && !wrap.checked, "Wrap switch turns off");
+  wrap.click();
+  check(!document.body.classList.contains("key-overlay"), "Wrap switch turns on");
+  document.querySelector(".share").click();
+  check(panel.hidden, "Opening share closes more menu");
+  more.click();
+  document.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 27, bubbles: true }));
+  check(panel.hidden && document.activeElement === more, "Escape closes more menu");
+  return "PASS: copy all, more menu, text size, wrap switch, download";
 })()'

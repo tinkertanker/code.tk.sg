@@ -30,4 +30,20 @@ describe('link previews', function(){
 		const svg = preview.buildSvg('abc', 'def f(): pass', 'txt');
 		ok(svg.includes('<tspan fill="#839496">def f(): pass</tspan>'));
 	});
+
+	it('auto-detects the language for unknown extensions', function(){
+		const svg = preview.buildSvg('abc', '#include <stdio.h>\nint main(void) { return 0; }\n', 'nosuchlang');
+		ok(svg.includes('fill="#2aa198">&lt;stdio.h&gt;</tspan>'));
+		strictEqual(
+			preview.renderImage('same', 'x = 1', 'nosuchlang'),
+			preview.renderImage('same', 'x = 1', 'otherunknown')
+		);
+	});
+
+	it('clips long lines with an ellipsis', function(){
+		const svg = preview.buildSvg('abc', 'x'.repeat(500), 'txt');
+		const line = svg.match(/<tspan fill="#839496">(x+…)<\/tspan>/);
+		ok(line);
+		ok(line[1].length < 100);
+	});
 });

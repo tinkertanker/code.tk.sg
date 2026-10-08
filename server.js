@@ -104,7 +104,7 @@ const utils = new HasteUtils();
 	app.get('/preview/:file', async (req, res, next) => {
 		if (!req.params.file.endsWith('.png')) return next();
 		const [key, extension] = req.params.file.slice(0, -4).split('.', 2);
-		const data = await preferredStore.get(key, true);
+		const data = await preferredStore.get(key, true).catch(() => null);
 		if (!data) return next();
 		try {
 			const png = preview.renderImage(key, data, extension);
@@ -128,7 +128,8 @@ const utils = new HasteUtils();
 	const indexHtml = fs.readFileSync('./static/index.html', 'utf8');
 	app.get('/:id', async (req, res, next) => {
 		const [key, extension] = req.params.id.split('.', 2);
-		const data = await preferredStore.get(key, true);
+		//serve the plain page if the paste is missing or the store fails
+		const data = await preferredStore.get(key, true).catch(() => null);
 		if (!data){
 			req.sturl = '/';
 			return next();

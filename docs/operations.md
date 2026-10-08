@@ -43,7 +43,9 @@ release; remove it only when the resolved dependency is safe without it.
 Build tools are development dependencies and are excluded from the runtime image.
 Install with `npm ci` before `npm run build`. Run `npm audit` and
 `npm audit --omit=dev` when updating dependencies. The vendored highlighter and
-CDN jQuery require separate advisory checks.
+CDN jQuery require separate advisory checks. Rebuild the highlighter with
+`scripts/build-highlight.sh`, which downloads the official highlight.js CDN
+assets with npm; edit its language list to add or remove languages.
 
 ## Backups
 

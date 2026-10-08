@@ -1,6 +1,7 @@
 module.exports = {
 	"host": "0.0.0.0",
 	"port": 7777,
+	"baseUrl": "https://code.tk.sg",
 
 	"keyLength": 10,
 	"maxLength": 400000,

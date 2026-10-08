@@ -105,7 +105,7 @@ body.key-overlay #box .key-spacer {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 8px;
+	gap: 4px;
 	padding: 11px 13px;
 	border-bottom: 1px solid #303238;
 }
@@ -118,7 +118,7 @@ body.key-overlay #box .key-spacer {
 #box1 a.logo, #box1 a.logo:visited {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	color: #f2f2f3;
 	font-size: 22px;
 	text-decoration: none;
@@ -132,14 +132,13 @@ body.key-overlay #box .key-spacer {
 
 .key-links {
 	display: flex;
-	gap: 2px;
 }
 
 .github, .wrap-toggle {
 	--icon: url(icons/github.svg);
 	display: grid;
 	place-items: center;
-	flex: 0 0 28px;
+	flex: 0 0 26px;
 	height: 36px;
 	color: #a3a7b0;
 	border-radius: 6px;

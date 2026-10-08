@@ -42,14 +42,20 @@ describe('link previews', function(){
 
 	it('clips long lines with an ellipsis', function(){
 		const svg = preview.buildSvg('abc', 'x'.repeat(500), 'txt');
-		const line = svg.match(/<tspan fill="#839496">(x+…)<\/tspan>/);
+		const line = svg.match(/<tspan fill="#839496">(x+)<\/tspan><tspan fill="#839496">…<\/tspan>/);
 		ok(line);
-		ok(line[1].length < 100);
+		strictEqual(line[1].length, 39);
 	});
 
 	it('keeps highlighting the lines after a clipped line', function(){
 		const data = 'print("' + 'x'.repeat(100) + ' \\(a + b)")\n// comment\n';
 		const svg = preview.buildSvg('abc', data, 'swift');
 		ok(svg.includes('fill="#586e75">// comment</tspan>'));
+	});
+
+	it('marks a clipped line even when the cut falls between tokens', function(){
+		// The plain run fills all 40 columns exactly; the comment after it is cut
+		const svg = preview.buildSvg('abc', 'a'.repeat(39) + ' # comment', 'py');
+		ok(svg.includes('>…</tspan>'));
 	});
 });

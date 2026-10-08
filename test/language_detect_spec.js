@@ -30,13 +30,33 @@ describe('language detection', function(){
 		});
 	});
 
-	it('returns plain text when nothing matches', function(){
-		const result = detect.highlightAuto(hljs, 'hello');
-		strictEqual(result.language, undefined);
-		strictEqual(result.value, 'hello');
+	[
+		'hello',
+		'Hi all,\n\nPlease remember to submit your project by Friday. Ask Sam if you need help.',
+		'name,age,city\nAlice,30,Singapore\nBob,25,London',
+		'from here we walk to the shop',
+	].forEach(text => {
+		it(`leaves ${JSON.stringify(text.slice(0, 20))} as plain text`, function(){
+			strictEqual(detect.highlightAuto(hljs, text).language, undefined);
+		});
 	});
 
 	it('escapes HTML in plain text', function(){
-		strictEqual(detect.highlightAuto(hljs, '<b>').value.includes('<b>'), false);
+		strictEqual(detect.highlightAuto(hljs, '<b>&').value, '&lt;b&gt;&amp;');
+	});
+
+	it('escapes HTML in highlighted code', function(){
+		const result = detect.highlightAuto(hljs, 'def f():\n    return "<img src=x onerror=alert(1)>"');
+		strictEqual(result.language, 'python');
+		ok(!result.value.includes('<img'));
+	});
+
+	it('stays fast on large pathological pastes', function(){
+		this.timeout(20000);
+		['\n', '[', 'select 1;\n', 'func a(\n', '"\\(a'].forEach(unit => {
+			const start = Date.now();
+			detect.highlightAuto(hljs, unit.repeat(Math.ceil(400000 / unit.length)));
+			ok(Date.now() - start < 5000, `${JSON.stringify(unit)} took ${Date.now() - start}ms`);
+		});
 	});
 });

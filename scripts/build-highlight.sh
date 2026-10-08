@@ -4,7 +4,8 @@ set -euo pipefail
 # Rebuild static/highlight.min.js from the official highlight.js CDN assets:
 # the common build followed by extra language modules from the same release.
 # To add a language, append its highlight.js name to EXTRA_LANGUAGES, rerun,
-# and update docs/languages.md and haste.extensionMap in static/application.js.
+# update docs/languages.md and haste.extensionMap in static/application.js,
+# and bump the ?v= cache-busting values in static/index.html.
 VERSION=11.12.0
 EXTRA_LANGUAGES=(
 	# Retained from the original Haste deployment
@@ -27,6 +28,7 @@ assets="$work/package"
 	for language in "${EXTRA_LANGUAGES[@]}"; do
 		cat "$assets/languages/$language.min.js"
 	done
-} > "$root/static/highlight.min.js"
+} > "$work/highlight.min.js"
+mv "$work/highlight.min.js" "$root/static/highlight.min.js"
 
 echo "Wrote static/highlight.min.js (highlight.js $VERSION, ${#EXTRA_LANGUAGES[@]} extra languages)"

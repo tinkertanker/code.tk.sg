@@ -24,6 +24,7 @@ module.exports = {
 		'func greet(name: String) -> String {\n    let greeting = "Hello, " + name\n    return greeting\n}\nvar numbers = [1, 2, 3]\nfor n in numbers {\n    print(n)\n}',
 	],
 	rust: [
+		'if let Some(x) = maybe {\n    println!(\"{}\", x);\n}',
 		'fn main() {\n    println!("Hello, world!");\n}',
 		'fn main() {\n    let mut v: Vec<i32> = Vec::new();\n    v.push(1);\n    for x in &v {\n        println!("{}", x);\n    }\n}',
 		'use std::collections::HashMap;\n\n#[derive(Debug)]\nstruct Point { x: i32, y: i32 }\n\nimpl Point {\n    fn new(x: i32, y: i32) -> Self { Point { x, y } }\n}',
@@ -45,6 +46,7 @@ module.exports = {
 		'fun sum(a: Int, b: Int): Int {\n    return a + b\n}',
 	],
 	python: [
+		'Traceback (most recent call last):\n  File "main.py", line 3, in <module>\n    print(x)\nNameError: name \'x\' is not defined',
 		'name = input("Name? ")\nprint("Hello", name)',
 		'def add(a, b):\n    return a + b\n\nprint(add(2, 3))',
 		'for i in range(10):\n    if i % 2 == 0:\n        print(i)',
@@ -54,6 +56,7 @@ module.exports = {
 		'numbers = [1, 2, 3]\nsquares = [n * n for n in numbers]\nprint(squares)',
 	],
 	javascript: [
+		'class Person {\n  constructor(name) {\n    this.name = name;\n  }\n  greet() {\n    alert(this.name);\n  }\n}',
 		'console.log("Hello, world!");',
 		'const add = (a, b) => a + b;\nconsole.log(add(2, 3));',
 		'function greet(name) {\n  return "Hello, " + name;\n}\n\ndocument.getElementById("out").textContent = greet("Bob");',
@@ -68,6 +71,7 @@ module.exports = {
 		'export async function getUser(id: string): Promise<User | null> {\n  const res = await fetch(`/users/${id}`);\n  return res.ok ? res.json() : null;\n}',
 	],
 	java: [
+		'interface Shape {\n    double area();\n}\n\nclass Circle implements Shape {\n    private double r;\n    public double area() { return Math.PI * r * r; }\n}',
 		'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello");\n    }\n}',
 		'import java.util.ArrayList;\n\nList<String> names = new ArrayList<>();\nnames.add("Ann");\nfor (String n : names) {\n    System.out.println(n);\n}',
 		'@Override\npublic String toString() {\n    return "Point(" + x + ", " + y + ")";\n}',
@@ -102,10 +106,14 @@ module.exports = {
 		'h1 { color: red; }\n#main > p:first-child { font-weight: bold; }',
 	],
 	json: [
+		'[\n  {\"id\": 1, \"name\": \"a\"},\n  {\"id\": 2, \"name\": \"b\"}\n]',
+		'{\"a\": 1, \"b\": [1,2,3]}',
+		'{\"event\":\"start\"}\n{\"event\":\"stop\"}',
 		'{\n  "name": "app",\n  "version": "1.0.0",\n  "dependencies": {\n    "express": "^4.0.0"\n  }\n}',
 		'[{"id": 1, "done": false}, {"id": 2, "done": true}]',
 	],
 	yaml: [
+		'components:\n  schemas:\n    User:\n      type: object\n      properties:\n        name:\n          type: string\n        age:\n          type: number',
 		'name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: npm test',
 		'services:\n  web:\n    image: nginx:latest\n    ports:\n      - "80:80"',
 	],
@@ -115,6 +123,8 @@ module.exports = {
 		'#!/usr/bin/env bash\nset -euo pipefail\ncd "$(dirname "$0")"\nexport PATH="$HOME/bin:$PATH"',
 	],
 	sql: [
+		'SELECT id, name\nFROM users\nWHERE age > 18\nORDER BY name;',
+		'SELECT *\nFROM students\nWHERE grade = 5;',
 		'SELECT name, age FROM users WHERE age > 18 ORDER BY name;',
 		'CREATE TABLE users (\n  id INTEGER PRIMARY KEY,\n  name TEXT NOT NULL\n);\nINSERT INTO users (name) VALUES (\'Ann\');',
 	],
@@ -124,6 +134,7 @@ module.exports = {
 		'final List<String> names = [\'a\', \'b\'];\nfor (final name in names) {\n  print(name);\n}',
 	],
 	dockerfile: [
+		'FROM ubuntu\nRUN apt-get update && apt-get install -y curl\nCMD [\"bash\"]',
 		'FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm ci\nCOPY . .\nCMD ["node", "server.js"]',
 		'FROM python:3.12-slim\nRUN pip install flask\nEXPOSE 5000',
 	],
@@ -134,5 +145,21 @@ module.exports = {
 	powershell: [
 		'Get-ChildItem -Path C:\\Users -Recurse | Where-Object { $_.Length -gt 1MB }',
 		'$name = Read-Host "Name"\nWrite-Host "Hello, $name"',
+	],
+	lua: [
+		'function greet(name)\n  print(\"Hello \" .. name)\nend',
+		'local function f(x)\n  return x * 2\nend\nprint(f(2))',
+		'local x = 10\nfor i = 1, x do\n  print(i)\nend',
+		'if score > 10 then\n  print("win")\nend',
+	],
+	latex: [
+		'\\documentclass{article}\n\\begin{document}\nHello, world!\n\\end{document}',
+	],
+	markdown: [
+		'# Project\n\nRun `npm start` to begin.\n\n- one\n- two\n\nSee [docs](https://example.com).',
+	],
+	arduino: [
+		'void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(1000);\n}',
+		'void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int v = analogRead(A0);\n  Serial.println(v);\n}',
 	],
 };

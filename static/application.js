@@ -173,7 +173,7 @@ haste.extensionMap = {
   xml: 'xml', html: 'xml', htm: 'xml', css: 'css', js: 'javascript', vbs: 'vbscript',
   lua: 'lua', pas: 'delphi', java: 'java', cpp: 'cpp', cc: 'cpp', m: 'objectivec',
   vala: 'vala', sql: 'sql', sm: 'smalltalk', lisp: 'lisp', ini: 'ini',
-  diff: 'diff', bash: 'bash', sh: 'bash', tex: 'tex', erl: 'erlang', hs: 'haskell',
+  diff: 'diff', bash: 'bash', sh: 'bash', tex: 'latex', erl: 'erlang', hs: 'haskell',
   md: 'markdown', txt: '', coffee: 'coffeescript', json: 'json', swift: 'swift',
   apache: 'apache', c: 'c', cs: 'csharp', dpr: 'delphi', graphql: 'graphql',
   http: 'http', kt: 'kotlin', less: 'less', lsp: 'lisp', mk: 'makefile',
@@ -182,8 +182,7 @@ haste.extensionMap = {
   shell: 'shell', ts: 'typescript', vbnet: 'vbnet', wasm: 'wasm', yaml: 'yaml',
   tsx: 'typescript', jsx: 'javascript', mjs: 'javascript', yml: 'yaml',
   ex: 'elixir', exs: 'elixir', ps1: 'powershell', jl: 'julia', proto: 'protobuf',
-  ino: 'arduino', clj: 'clojure', ml: 'ocaml', fs: 'fsharp', frag: 'glsl',
-  vert: 'glsl'
+  ino: 'arduino', clj: 'clojure', ml: 'ocaml', fs: 'fsharp'
 };
 
 // Look up the extension preferred for a type

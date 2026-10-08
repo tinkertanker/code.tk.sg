@@ -14,24 +14,33 @@ the short extension below to a paste URL (for example, `/paste-key.rs`). Use
 
 ## Automatic detection
 
-When a paste is saved, `static/language-detect.js` chooses its language and the
-matching extension is added to the URL. It only considers languages people
-commonly paste, so niche grammars cannot claim short snippets, and it adds
-points for syntax distinctive to one language (Swift's `\(name)` interpolation
-and `if let`, Python's `def ...:` blocks, TypeScript type annotations, and so
-on). Languages marked "Explicit only" below are highlighted only when chosen by
-URL extension.
+`static/language-detect.js` chooses a language when a paste is saved (the
+extension in the table is then added to the URL) and when a URL without an
+extension is opened. It:
+
+- only considers languages people commonly paste, so niche grammars cannot
+  claim short snippets; some (Dart, Dockerfile, Arduino and others) are only
+  considered when syntax distinctive to them appears;
+- adds points for syntax distinctive to one language, such as Swift's
+  `\(name)` interpolation and `if let`, Python's `def ...:` blocks and
+  TypeScript type annotations;
+- looks at the first 10,000 characters only, so large pastes stay fast;
+- leaves text that scores too low, such as prose, as plain text.
+
+Languages marked "Explicit only" below are highlighted only when chosen by URL
+extension.
 
 The samples in `test/fixtures/language_samples.js` must all be detected
-correctly; add a sample there when you fix a misdetection.
+correctly; add a sample there when you fix a misdetection. If you change
+`language-detect.js`, bump its `?v=` value in `static/index.html`.
 
 ## Languages
 
 | Language | Extension | Detection |
 |----------|-----------|-----------|
 | Apache config | `apache` | Explicit only |
-| Arduino | `ino` | Explicit only |
-| Bash | `sh` | Automatic |
+| Arduino | `ino` | Automatic |
+| Bash | `bash` or `sh` | Automatic |
 | C | `c` | Automatic |
 | C# | `cs` | Automatic |
 | C++ | `cpp` | Automatic |

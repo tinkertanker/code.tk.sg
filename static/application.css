@@ -46,8 +46,43 @@ textarea {
 }
 
 #box code {
+	display: block;
 	padding: 0px;
 	background: transparent !important; /* don't hide hastebox */
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	counter-reset: line;
+}
+
+/* empty float sized by fitKeySpacer so text wraps around the toolbar */
+#box .key-spacer {
+	float: right;
+}
+
+/* wrap toggle off: original layout, long lines scroll under the toolbar */
+body.key-overlay #box code {
+	white-space: pre;
+	overflow-wrap: normal;
+}
+
+body.key-overlay #box .key-spacer {
+	display: none;
+}
+
+#box .line {
+	display: block;
+	position: relative;
+	counter-increment: line;
+}
+
+#box .line::before {
+	content: counter(line);
+	position: absolute;
+	right: calc(100% + 20px);
+	width: 30px;
+	color: #7d7d7d;
+	text-align: right;
+	user-select: none;
 }
 
 /* key */
@@ -70,6 +105,7 @@ textarea {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: 8px;
 	padding: 11px 13px;
 	border-bottom: 1px solid #303238;
 }
@@ -94,7 +130,12 @@ textarea {
 	object-fit: contain;
 }
 
-.github {
+.key-links {
+	display: flex;
+	gap: 2px;
+}
+
+.github, .wrap-toggle {
 	--icon: url(icons/github.svg);
 	display: grid;
 	place-items: center;
@@ -104,9 +145,26 @@ textarea {
 	border-radius: 6px;
 }
 
-.github:hover {
+.github:hover, .wrap-toggle:hover {
 	color: #f2f2f3;
 	background: #292c32;
+}
+
+.wrap-toggle {
+	--icon: url(icons/wrap-text.svg);
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font: inherit;
+}
+
+.wrap-toggle .icon {
+	width: 18px;
+	height: 18px;
+}
+
+.wrap-toggle[aria-pressed="true"] {
+	color: #f3777d;
 }
 
 #box2 .function {
@@ -291,6 +349,7 @@ textarea {
 @media (max-width: 600px) {
 	body { padding: 152px 20px 20px 40px; }
 	#linenos { top: 152px; }
+	#box .line::before { right: calc(100% + 10px); }
 	#key { top: 12px; right: 12px; }
 }
 

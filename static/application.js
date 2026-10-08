@@ -43,8 +43,7 @@ haste_document.prototype.load = function(key, callback, lang) {
       callback({
         value: high.value,
         key: key,
-        language: high.language || lang,
-        lineCount: res.data.split('\n').length
+        language: high.language || lang
       });
     },
     error: function() {
@@ -72,8 +71,7 @@ haste_document.prototype.save = function(data, callback) {
       callback(null, {
         value: high.value,
         key: res.key,
-        language: high.language,
-        lineCount: data.split('\n').length
+        language: high.language
       });
     },
     error: function(res) {
@@ -98,6 +96,9 @@ var haste = function(appName) {
   this.configureShortcuts();
   this.configureButtons();
   this.configureShare();
+  this.configureWrapToggle();
+  var _this = this;
+  $(window).on('resize', function() { _this.fitKeySpacer(); });
 };
 
 // Set the page title - include the appName
@@ -197,14 +198,62 @@ haste.prototype.lookupTypeByExtension = function(ext) {
   return haste.extensionMap[ext] || ext;
 };
 
-// Add line numbers to the document
-// For the specified number of lines
-haste.prototype.addLineNumbers = function(lineCount) {
-  var h = '';
-  for (var i = 0; i < lineCount; i++) {
-    h += (i + 1).toString() + '<br/>';
+// Split highlighted HTML into one block per line, closing and reopening
+// any spans that cross a newline so each line stands alone. Line numbers
+// are drawn by CSS on each line, so they stay aligned when lines wrap.
+haste.prototype.renderLines = function(html) {
+  var out = '<span class="key-spacer" aria-hidden="true"></span>';
+  var open = [];
+  var line = '';
+  var hasText = false;
+  var tokens = html.match(/<[^>]*>|[^<\n]+|\n/g) || [];
+  var flush = function() {
+    out += '<span class="line">' + (hasText ? line + new Array(open.length + 1).join('</span>') : '<br/>') + '</span>';
+    line = open.join('');
+    hasText = false;
+  };
+  for (var i = 0; i < tokens.length; i++) {
+    var t = tokens[i];
+    if (t === '\n') { flush(); }
+    else if (t.indexOf('</') === 0) { open.pop(); line += t; }
+    else if (t.charAt(0) === '<') { open.push(t); line += t; }
+    else { hasText = true; line += t; }
   }
-  $('#linenos').html(h);
+  flush();
+  this.$code.html(out);
+  this.$linenos.html('');
+  this.fitKeySpacer();
+};
+
+// Size the floating spacer so the top of the code flows around the toolbar
+haste.prototype.fitKeySpacer = function() {
+  var $spacer = this.$code.children('.key-spacer');
+  if (!$spacer.length || !this.$box.is(':visible')) return;
+  var key = $('#key')[0].getBoundingClientRect();
+  var box = this.$box[0].getBoundingClientRect();
+  var height = key.bottom + 12 - (box.top + window.scrollY);
+  var width = box.right - key.left + 16;
+  if (height <= 0 || width <= 0) { height = 0; width = 0; }
+  $spacer.css({ width: width + 'px', height: height + 'px' });
+};
+
+// Toggle whether saved code wraps around the toolbar or runs underneath it
+haste.prototype.configureWrapToggle = function() {
+  var _this = this;
+  var $toggle = $('#key .wrap-toggle');
+  var apply = function(wrap) {
+    $('body').toggleClass('key-overlay', !wrap);
+    $toggle.attr('aria-pressed', wrap ? 'true' : 'false');
+    _this.fitKeySpacer();
+  };
+  var wrap = true;
+  try { wrap = window.localStorage.getItem('wrapAroundKey') !== 'false'; } catch (e) { /* storage unavailable */ }
+  apply(wrap);
+  $toggle.on('click', function() {
+    wrap = $toggle.attr('aria-pressed') !== 'true';
+    try { window.localStorage.setItem('wrapAroundKey', wrap ? 'true' : 'false'); } catch (e) { /* storage unavailable */ }
+    apply(wrap);
+  });
 };
 
 // Remove the line numbers
@@ -222,13 +271,12 @@ haste.prototype.loadDocument = function(key) {
   _this.doc = new haste_document();
   _this.doc.load(parts[0], function(ret) {
     if (ret) {
-      _this.$code.html(ret.value);
       _this.setTitle(ret.key);
       _this.fullKey();
       _this.setDirty(false);
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
-      _this.addLineNumbers(ret.lineCount);
+      _this.renderLines(ret.value);
     }
     else {
       _this.newDocument();
@@ -253,7 +301,6 @@ haste.prototype.lockDocument = function() {
       _this.showMessage(err.message, 'error');
     }
     else if (ret) {
-      _this.$code.html(ret.value);
       _this.setTitle(ret.key);
       var file = '/' + ret.key;
       if (ret.language) {
@@ -264,7 +311,7 @@ haste.prototype.lockDocument = function() {
       _this.setDirty(false);
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
-      _this.addLineNumbers(ret.lineCount);
+      _this.renderLines(ret.value);
     }
   });
 };

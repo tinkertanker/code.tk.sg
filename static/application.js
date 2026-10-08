@@ -1,4 +1,4 @@
-/* global $, hljs, qrcode, window, document */
+/* global $, hljs, hasteLanguageDetect, qrcode, window, document */
 
 ///// represents a single document
 
@@ -34,11 +34,11 @@ haste_document.prototype.load = function(key, callback, lang) {
           high = hljs.highlight(res.data, { language: lang });
         }
         else {
-          high = hljs.highlightAuto(res.data);
+          high = hasteLanguageDetect.highlightAuto(hljs, res.data);
         }
       } catch(err) {
         // failed highlight, fall back on auto
-        high = hljs.highlightAuto(res.data);
+        high = hasteLanguageDetect.highlightAuto(hljs, res.data);
       }
       callback({
         value: high.value,
@@ -68,7 +68,7 @@ haste_document.prototype.save = function(data, callback) {
     success: function(res) {
       _this.locked = true;
       _this.key = res.key;
-      var high = hljs.highlightAuto(data);
+      var high = hasteLanguageDetect.highlightAuto(hljs, data);
       callback(null, {
         value: high.value,
         key: res.key,
@@ -173,13 +173,16 @@ haste.extensionMap = {
   xml: 'xml', html: 'xml', htm: 'xml', css: 'css', js: 'javascript', vbs: 'vbscript',
   lua: 'lua', pas: 'delphi', java: 'java', cpp: 'cpp', cc: 'cpp', m: 'objectivec',
   vala: 'vala', sql: 'sql', sm: 'smalltalk', lisp: 'lisp', ini: 'ini',
-  diff: 'diff', bash: 'bash', sh: 'bash', tex: 'tex', erl: 'erlang', hs: 'haskell',
+  diff: 'diff', bash: 'bash', sh: 'bash', tex: 'latex', erl: 'erlang', hs: 'haskell',
   md: 'markdown', txt: '', coffee: 'coffeescript', json: 'json', swift: 'swift',
   apache: 'apache', c: 'c', cs: 'csharp', dpr: 'delphi', graphql: 'graphql',
   http: 'http', kt: 'kotlin', less: 'less', lsp: 'lisp', mk: 'makefile',
   nginx: 'nginx', phptemp: 'php-template', properties: 'properties',
   pyrepl: 'python-repl', r: 'r', rs: 'rust', sc: 'scala', scss: 'scss',
-  shell: 'shell', ts: 'typescript', vbnet: 'vbnet', wasm: 'wasm', yaml: 'yaml'
+  shell: 'shell', ts: 'typescript', vbnet: 'vbnet', wasm: 'wasm', yaml: 'yaml',
+  tsx: 'typescript', jsx: 'javascript', mjs: 'javascript', yml: 'yaml',
+  ex: 'elixir', exs: 'elixir', ps1: 'powershell', jl: 'julia', proto: 'protobuf',
+  ino: 'arduino', clj: 'clojure', ml: 'ocaml', fs: 'fsharp'
 };
 
 // Look up the extension preferred for a type

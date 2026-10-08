@@ -3,6 +3,9 @@ module.exports = {
 	"host": "127.0.0.1",
 	"port": 7777,
 
+	//public URL used in link previews; defaults to the request's host
+	//"baseUrl": "https://code.tk.sg",
+
 	//length of random characters in link that's generated on document save
 	"keyLength": 10,
 	//max allowed paste size in UTF-8 bytes - 0 for unlimited (not recommended publicly)

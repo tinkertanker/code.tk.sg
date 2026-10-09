@@ -8,9 +8,14 @@ services:
       PORT: 7777
       VIRTUAL_PORT: 7777
       VIRTUAL_HOST: code.tk.sg
-      NODE_ENV: production
+      CERT_NAME: tk.sg
     volumes:
-      - ./config.js:/app/config.js:ro
+      - type: bind
+        source: ./config.json
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
       redis:
         condition: service_healthy

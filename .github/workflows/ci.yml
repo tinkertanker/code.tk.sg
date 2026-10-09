@@ -1,0 +1,39 @@
+name: Rust compatibility and runtime
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compatibility, frontend tests, and Rust lint
+        run: docker build --target test -t code-tk:test .
+      - name: Build runtime image
+        run: docker build --target runner -t code-tk:ci .
+      - name: Runtime startup and packaging smoke test
+        run: |
+          trap 'docker logs code-tk-smoke; docker rm -f code-tk-smoke' EXIT
+          docker run -d --name code-tk-smoke code-tk:ci
+          for attempt in $(seq 1 30); do
+            if docker exec code-tk-smoke code-tk --healthcheck; then
+              break
+            fi
+            sleep 1
+          done
+          docker exec code-tk-smoke code-tk --healthcheck
+          docker exec code-tk-smoke sh -c 'test "$(id -u)" = 1001 && ! command -v node && ! command -v cargo'

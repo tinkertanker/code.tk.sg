@@ -13,4 +13,8 @@ backups
 npm-debug.log
 static/*.min.js
 config.js
+config.json
+target/
+lib/preview-highlight.js
+__pycache__/
 .amp/portals/*

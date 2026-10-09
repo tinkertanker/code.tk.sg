@@ -1,0 +1,12 @@
+{
+  "host": "127.0.0.1",
+  "port": 7777,
+  "keyLength": 10,
+  "maxLength": 400000,
+  "keyGenerator": { "type": "phonetic" },
+  "staticMaxAge": 86400,
+  "logging": { "level": "info" },
+  "rateLimits": { "windowMs": 1800000, "max": 250 },
+  "storage": { "type": "file", "path": "./data" },
+  "documents": { "about": "./about.md" }
+}

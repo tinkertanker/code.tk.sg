@@ -40,7 +40,17 @@ Before updating the checkout/Compose file on the host:
 4. Review the JSON, especially database **2**, expiry, static documents, and any
    custom credentials/options. Rust supports file/Redis storage and common Redis
    connection settings; unsupported settings fail startup. Ensure UID 1001 can
-   read the file (e.g. ownership 1001:1001, mode 0600; do not make it public).
+   read the file. On the deployment host, set restrictive ownership/permissions:
+
+   ```sh
+   sudo chown 1001:1001 config.json
+   sudo chmod 0600 config.json
+   ```
+
+   The converter creates a private 0600 file owned by its invoking user, which
+   may not be UID 1001. Do not make configuration world-readable to work around
+   this. The deploy script checks access as the actual container user before
+   replacing the running service; it does not change existing file permissions.
 5. Build the test target and runtime **before** replacing the running container.
    Keep Redis running; use `docker compose up -d --wait` in the same deployment
    directory with the original project identity.
@@ -64,7 +74,9 @@ Production runs on `dev.tk.sg` in `Docker/code.tk.sg`. From a local checkout, ru
 ```
 
 The script pulls with `--ff-only`, copies Compose and the production template,
-tests/builds before recreation, and waits for health checks. It preserves an
+tests/builds and checks configuration readability before recreation, and waits
+for health checks. The disposable preflight container disables proxy discovery
+and does not start Redis. The script preserves an
 existing `config.json` and refuses an unconverted legacy config. Pass
 `--no-pull` when the server already has the intended revision or `--logs` to
 follow the resulting Compose logs.
@@ -86,8 +98,10 @@ create a new empty Redis volume. An authorized rollout runs from the existing
 
 `maxLength` limits UTF-8 bytes rather than JavaScript characters. Raw uploads are
 rejected as soon as they exceed it. Multipart uploads accept one `data` field and
-no files. Malformed forms return 400, and oversized fields return 413 without
-saving a paste. UTF-8, Latin-1/ASCII, UTF-16LE, and base64 field encodings retain
+no files. The whole multipart body is capped at `maxLength` plus 16 KiB for the
+envelope, including any preamble; fields and decoded text still obey `maxLength`.
+Malformed forms return 400, and oversized bodies/fields return 413 without saving
+a paste. UTF-8, Latin-1/ASCII, UTF-16LE, and base64 field encodings retain
 the legacy parser's decoding. Other charsets return 400 instead of crashing the
 server as they did in Haste. Do not use `maxLength: 0` on a public deployment. Configure
 reverse-proxy body-size and timeout limits as additional protection.
@@ -96,12 +110,15 @@ The Rust server does not parse query parameters. Request rate limits retain the
 old socket-IP policy: forwarded IP headers are not trusted. Behind nginx-proxy,
 clients therefore share the proxy's bucket, just as with the previous Express
 configuration. Changing that policy requires a separate trusted-proxy decision.
-Preview rendering runs off the async workers with bounded concurrency and a
+Preview rendering uses two dedicated threads, each retaining at most one QuickJS
+context, rather than Tokio's shared file-I/O pool. It has bounded concurrency and a
 200-entry PNG cache; excess simultaneous renders return 503. Paste writes are
 atomic insert-only; exhausted keyspaces return 503 instead of hanging/overwriting.
 
-Build tools are excluded from the runtime image. Install with `npm ci` before
-`npm run build`; Rust builds use the committed Cargo lockfile. Run `npm audit` and
+Build tools are excluded from the runtime image. On a fresh checkout, run
+`npm ci && npm run build` before direct Rust builds or checks: the build generates
+the ignored `lib/preview-highlight.js` embedded by Rust. Rust builds use the
+committed Cargo lockfile. Run `npm audit` and
 Rust dependency advisory checks when updating dependencies. The vendored highlighter and
 CDN jQuery require separate advisory checks. Rebuild the highlighter with
 `scripts/build-highlight.sh`, which downloads the official highlight.js CDN
@@ -164,5 +181,7 @@ are required.
 Run `amp orb services ensure` to start the application and an isolated,
 non-persistent Redis instance. The command prints a reviewable portal URL. Run
 `npm test` for frontend tests and `python3 tests/compatibility.py` for isolated
-HTTP/storage checks. Run `cargo fmt -- --check` and
+HTTP/storage checks. Outside the setup script, first run `npm ci && npm run build`
+to generate the embedded highlighter before any direct Rust checks. Run
+`cargo fmt -- --check` and
 `cargo clippy --locked --all-targets -- -D warnings` for Rust checks.

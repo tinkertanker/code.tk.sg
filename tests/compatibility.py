@@ -233,6 +233,30 @@ class FileContracts(Server):
         self.assertEqual(self.request("/documents", b"", "multipart/form-data")[0], 400)
         self.assertEqual(self.request("/documents", form([('name="data"', "abc")], False), ct)[0], 400)
 
+    def test_multipart_preamble_limit_rejects_before_eof(self):
+        ct = "multipart/form-data; boundary=test"
+        valid = (b"ignored preamble\r\n" * 200 +
+                 b'--test\r\nContent-Disposition: form-data; name="data"\r\n\r\n' +
+                 b"x" * 32 + b"\r\n--test--\r\n")
+        status, _, body = self.request("/documents", valid, ct)
+        self.assertEqual(status, 200)
+        self.assertEqual(self.request("/raw/" + json.loads(body)["key"])[2], b"x" * 32)
+
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=5)
+        try:
+            conn.putrequest("POST", "/documents")
+            conn.putheader("Content-Type", ct)
+            conn.putheader("Transfer-Encoding", "chunked")
+            conn.endheaders()
+            preamble = b"x" * (20 * 1024)
+            conn.send(f"{len(preamble):x}\r\n".encode() + preamble + b"\r\n")
+            # No first boundary or EOF: per-field limits alone leave this buffered.
+            response = conn.getresponse()
+            self.assertEqual(response.status, 413)
+            self.assertEqual(json.loads(response.read())["message"], "Document exceeds maximum length.")
+        finally:
+            conn.close()
+
     def test_missing_and_static_routes(self):
         for path in ["/raw/notfound", "/documents/notfound"]:
             status, _, body = self.request(path)
@@ -300,7 +324,7 @@ class RedisContracts(FileContracts):
 
 
 class RateLimitContracts(Server):
-    rate = {"windowMs": 1000, "max": 2}
+    rate = {"windowMs": 60000, "max": 2}
 
     def test_all_routes_share_limit_without_trusting_forwarded_headers(self):
         self.assertEqual(self.request("/")[0], 200)
@@ -311,7 +335,14 @@ class RateLimitContracts(Server):
         self.assertEqual(headers["X-RateLimit-Limit"], "2")
         self.assertEqual(headers["X-RateLimit-Remaining"], "0")
         self.assertGreaterEqual(int(headers["Retry-After"]), 1)
-        time.sleep(1.1)
+
+
+class RateLimitResetContracts(Server):
+    rate = {"windowMs": 500, "max": 1}
+
+    def test_window_resets(self):
+        self.assertEqual(self.request("/")[0], 200)
+        time.sleep(0.6)
         self.assertEqual(self.request("/")[0], 200)
 
 

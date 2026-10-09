@@ -37,7 +37,7 @@ struct App {
     dictionary: Vec<String>,
     rates: Mutex<(SystemTime, HashMap<IpAddr, u64>)>,
     previews: Mutex<VecDeque<(String, Bytes)>>,
-    preview_slots: Arc<tokio::sync::Semaphore>,
+    renderer: preview::Renderer,
 }
 
 #[tokio::main]
@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
         index: tokio::fs::read_to_string("static/index.html").await?,
         rates: Mutex::new((SystemTime::now(), HashMap::new())),
         previews: Mutex::new(VecDeque::new()),
-        preview_slots: Arc::new(tokio::sync::Semaphore::new(2)),
+        renderer: preview::Renderer::new()?,
     });
     let router = Router::new()
         .route("/documents", post(upload).get(fallback))
@@ -210,7 +210,9 @@ async fn upload(State(app): State<Arc<App>>, request: Request) -> Response {
         let limits = if limit == 0 {
             multer::SizeLimit::new()
         } else {
-            multer::SizeLimit::new().per_field(limit as u64)
+            multer::SizeLimit::new()
+                .per_field(limit as u64)
+                .whole_stream((limit as u64).saturating_add(16 * 1024))
         };
         let mut form = multer::Multipart::with_constraints(
             request.into_body().into_data_stream(),
@@ -222,7 +224,8 @@ async fn upload(State(app): State<Arc<App>>, request: Request) -> Response {
             let field = match form.next_field().await {
                 Ok(Some(field)) => field,
                 Ok(None) => break,
-                Err(multer::Error::FieldSizeExceeded { .. }) => return too_large(),
+                Err(multer::Error::FieldSizeExceeded { .. })
+                | Err(multer::Error::StreamSizeExceeded { .. }) => return too_large(),
                 Err(_) => return error(StatusCode::BAD_REQUEST, "Invalid multipart request."),
             };
             if seen {
@@ -263,7 +266,8 @@ async fn upload(State(app): State<Arc<App>>, request: Request) -> Response {
                     };
                     buffer.extend_from_slice(text.as_bytes());
                 }
-                Err(multer::Error::FieldSizeExceeded { .. }) => return too_large(),
+                Err(multer::Error::FieldSizeExceeded { .. })
+                | Err(multer::Error::StreamSizeExceeded { .. }) => return too_large(),
                 Err(_) => return error(StatusCode::BAD_REQUEST, "Invalid multipart request."),
             }
         }
@@ -353,25 +357,15 @@ async fn image(State(app): State<Arc<App>>, Path(file): Path<String>) -> Respons
     let png = if let Some(png) = cached {
         png
     } else {
-        let permit = match app.preview_slots.clone().try_acquire_owned() {
-            Ok(permit) => permit,
-            Err(_) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
-        };
-        let key = key.to_string();
-        let extension = extension.map(String::from);
-        let result = tokio::task::spawn_blocking(move || {
-            let _permit = permit;
-            preview::render(&key, &data, extension.as_deref())
-        })
-        .await;
-        let png = match result {
-            Ok(Ok(png)) => Bytes::from(png),
-            Ok(Err(err)) => {
-                tracing::error!(error = %err, "Preview rendering failed");
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
+        let png = match app
+            .renderer
+            .render(key.to_string(), data, extension.map(String::from))
+            .await
+        {
+            Ok(Some(png)) => Bytes::from(png),
+            Ok(None) => return StatusCode::SERVICE_UNAVAILABLE.into_response(),
             Err(err) => {
-                tracing::error!(error = %err, "Preview worker failed");
+                tracing::error!(error = %err, "Preview rendering failed");
                 return StatusCode::INTERNAL_SERVER_ERROR.into_response();
             }
         };

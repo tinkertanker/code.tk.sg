@@ -1,18 +1,77 @@
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex, mpsc};
 
 use anyhow::Context;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use quick_js::JsValue;
 use serde::Deserialize;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, oneshot};
 
 const FOREGROUND: &str = "#839496";
 const FONT: &[u8] = include_bytes!("../lib/fonts/DejaVuSansMono.ttf");
 const LOGO: &[u8] = include_bytes!("../static/tinkercademy.png");
 const HIGHLIGHT: &str = include_str!("../lib/preview-highlight.js");
 
-thread_local! {
-    // QuickJS contexts stay on the blocking worker that owns them.
-    static ENGINE: RefCell<Option<quick_js::Context>> = const { RefCell::new(None) };
+pub struct Renderer {
+    jobs: mpsc::SyncSender<Job>,
+    slots: Arc<Semaphore>,
+}
+
+struct Job {
+    key: String,
+    data: String,
+    extension: Option<String>,
+    reply: oneshot::Sender<anyhow::Result<Vec<u8>>>,
+    _permit: OwnedSemaphorePermit,
+}
+
+impl Renderer {
+    pub fn new() -> anyhow::Result<Self> {
+        let (sender, receiver) = mpsc::sync_channel::<Job>(2);
+        let receiver = Arc::new(Mutex::new(receiver));
+        for i in 0..2 {
+            let receiver = receiver.clone();
+            std::thread::Builder::new()
+                .name(format!("preview-{i}"))
+                .spawn(move || {
+                    // Exactly two contexts, owned by fixed workers, not shared FS threads.
+                    let mut engine = None;
+                    loop {
+                        let job = receiver.lock().unwrap().recv();
+                        let Ok(job) = job else { break };
+                        let result =
+                            render(&mut engine, &job.key, &job.data, job.extension.as_deref());
+                        let _ = job.reply.send(result);
+                    }
+                })?;
+        }
+        Ok(Self {
+            jobs: sender,
+            slots: Arc::new(Semaphore::new(2)),
+        })
+    }
+
+    pub async fn render(
+        &self,
+        key: String,
+        data: String,
+        extension: Option<String>,
+    ) -> anyhow::Result<Option<Vec<u8>>> {
+        let permit = match self.slots.clone().try_acquire_owned() {
+            Ok(permit) => permit,
+            Err(_) => return Ok(None),
+        };
+        let (reply, result) = oneshot::channel();
+        self.jobs
+            .send(Job {
+                key,
+                data,
+                extension,
+                reply,
+                _permit: permit,
+            })
+            .map_err(|_| anyhow::anyhow!("Preview workers stopped"))?;
+        result.await.context("Preview worker stopped")?.map(Some)
+    }
 }
 
 pub fn escape(value: &str) -> String {
@@ -128,7 +187,11 @@ struct Highlight {
     language: Option<String>,
 }
 
-fn highlight(text: &str, extension: Option<&str>) -> anyhow::Result<Highlight> {
+fn highlight(
+    engine: &mut Option<quick_js::Context>,
+    text: &str,
+    extension: Option<&str>,
+) -> anyhow::Result<Highlight> {
     let language = language(extension);
     if language == Some("") {
         return Ok(Highlight {
@@ -136,31 +199,28 @@ fn highlight(text: &str, extension: Option<&str>) -> anyhow::Result<Highlight> {
             language: None,
         });
     }
-    ENGINE.with(|engine| {
-        let mut engine = engine.borrow_mut();
-        if engine.is_none() {
-            let context = quick_js::Context::builder()
-                .memory_limit(64 * 1024 * 1024)
-                .build()?;
-            context
-                .eval(HIGHLIGHT)
-                .context("Cannot initialize highlight.js")?;
-            *engine = Some(context);
-        }
-        let value = engine.as_ref().unwrap().call_function(
-            "highlightSnippet",
-            vec![
-                JsValue::String(text.into()),
-                language
-                    .map(|s| JsValue::String(s.into()))
-                    .unwrap_or(JsValue::Null),
-            ],
-        )?;
-        let JsValue::String(json) = value else {
-            anyhow::bail!("Invalid highlighter result");
-        };
-        Ok(serde_json::from_str(&json)?)
-    })
+    if engine.is_none() {
+        let context = quick_js::Context::builder()
+            .memory_limit(64 * 1024 * 1024)
+            .build()?;
+        context
+            .eval(HIGHLIGHT)
+            .context("Cannot initialize highlight.js")?;
+        *engine = Some(context);
+    }
+    let value = engine.as_ref().unwrap().call_function(
+        "highlightSnippet",
+        vec![
+            JsValue::String(text.into()),
+            language
+                .map(|s| JsValue::String(s.into()))
+                .unwrap_or(JsValue::Null),
+        ],
+    )?;
+    let JsValue::String(json) = value else {
+        anyhow::bail!("Invalid highlighter result");
+    };
+    Ok(serde_json::from_str(&json)?)
 }
 
 fn colour(classes: &str, parent: &str) -> String {
@@ -219,7 +279,12 @@ fn tokenise(mut html: &str) -> Vec<Vec<(String, String)>> {
     lines
 }
 
-fn build_svg(key: &str, data: &str, extension: Option<&str>) -> anyhow::Result<String> {
+fn build_svg(
+    engine: &mut Option<quick_js::Context>,
+    key: &str,
+    data: &str,
+    extension: Option<&str>,
+) -> anyhow::Result<String> {
     let font_size: f64 = (1200.0 - 96.0) / (40.0 * 0.602 + 2.5);
     let line_height = (font_size * 1.4).round();
     let line_limit = ((900.0 - 96.0 - 48.0) / line_height) as usize;
@@ -238,7 +303,7 @@ fn build_svg(key: &str, data: &str, extension: Option<&str>) -> anyhow::Result<S
         })
         .collect::<Vec<_>>()
         .join("\n");
-    let high = highlight(&snippet, extension)?;
+    let high = highlight(engine, &snippet, extension)?;
     let code_x = 48.0 + font_size * 2.5;
     let total_lines = data.split('\n').count();
     let count = format!(
@@ -299,11 +364,16 @@ width="1200" height="900" viewBox="0 0 1200 900">
     ))
 }
 
-pub fn render(key: &str, data: &str, extension: Option<&str>) -> anyhow::Result<Vec<u8>> {
+fn render(
+    engine: &mut Option<quick_js::Context>,
+    key: &str,
+    data: &str,
+    extension: Option<&str>,
+) -> anyhow::Result<Vec<u8>> {
     let mut options = resvg::usvg::Options::default();
     options.fontdb_mut().load_font_data(FONT.to_vec());
     options.font_family = "DejaVu Sans Mono".into();
-    let tree = resvg::usvg::Tree::from_str(&build_svg(key, data, extension)?, &options)?;
+    let tree = resvg::usvg::Tree::from_str(&build_svg(engine, key, data, extension)?, &options)?;
     let mut pixmap = resvg::tiny_skia::Pixmap::new(1200, 900).context("Cannot allocate preview")?;
     resvg::render(
         &tree,

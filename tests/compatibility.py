@@ -297,6 +297,13 @@ class FileContracts(Server):
             self.assertEqual(headers["Cache-Control"], "public, max-age=86400")
             self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
             self.assertEqual(struct.unpack(">II", png[16:24]), (1200, 900))
+        # Ruby's character literal grammar can split an astral character between spans.
+        status, _, body = self.request("/documents", "puts ?😀".encode())
+        self.assertEqual(status, 200)
+        key = json.loads(body)["key"]
+        status, _, png = self.request("/preview/" + key + ".rb.png")
+        self.assertEqual(status, 200)
+        self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
 
     def test_head(self):
         status, headers, body = self.request("/raw/legacykey", method="HEAD")
@@ -378,6 +385,18 @@ class HostOriginContracts(Server):
         self.assertIn(f'content="http://paste.example:7777/{key}.txt"'.encode(), html)
         self.assertIn(b'content="&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;"', html)
         self.assertNotIn(b'<script>alert(1)</script>', html)
+
+
+class ImplicitTypeContracts(Server):
+    options = {"storage": {}, "keyGenerator": {"keyspace": "Q7"}}
+
+    def test_legacy_implicit_file_and_random_types(self):
+        self.assertEqual(self.request("/raw/legacykey")[2].decode(), self.legacy_data)
+        status, _, body = self.request("/documents", b"implicit defaults")
+        self.assertEqual(status, 200)
+        key = json.loads(body)["key"]
+        self.assertRegex(key, r"^[Q7]{10}$")
+        self.assertEqual(self.request("/raw/" + key)[2], b"implicit defaults")
 
 
 if __name__ == "__main__":

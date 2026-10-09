@@ -151,7 +151,20 @@ impl Config {
             }
             std::fs::copy("example.config.json", &path)?;
         }
-        let mut config: Self = serde_json::from_slice(&std::fs::read(&path)?)
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path)?).context("Invalid JSON configuration")?;
+        // The legacy loader supplied these tags when option objects omitted them.
+        for (field, kind) in [("storage", "file"), ("keyGenerator", "random")] {
+            if let Some(options) = value
+                .get_mut(field)
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                options
+                    .entry("type")
+                    .or_insert_with(|| serde_json::Value::String(kind.into()));
+            }
+        }
+        let mut config: Self = serde_json::from_value(value)
             .context("Invalid configuration (Rust supports file and Redis storage)")?;
         if let Ok(host) = std::env::var("HOST") {
             config.host = host;

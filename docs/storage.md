@@ -1,131 +1,45 @@
 # Storage
 
-> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). Tinkercademy added this note; the text below is retained as upstream reference. This fork uses `config.js`, not `config.json`. Our production Redis configuration and backup procedures are documented in the [README](../README.md); not every upstream adapter is installed or validated by our deployment.
+The Rust server supports the deployment's **Redis** backend and the local **file**
+backend. It reads and writes the same formats as Haste; existing keys and URLs
+need no migration. The old upstream MongoDB, Postgres, S3, Memcached, and RethinkDB
+adapters are not supported by this replacement. Configuring them fails at startup
+instead of falling back to an empty store.
 
-Here's a list of all supported document store systems.  
-One of these is meant to be set in `config.json` as `storage` object.  
-Default type is [file](#file) with save directory at `./data`.  
-With some storage options you can set up document expiration - after which documents will no longer be available
-
-**Table of Contents**
-
-In alphabetical order:
-
-- [Amazon S3](#amazon-s3)
-- [File](#file)
-- [Memcached](#memcached)
-- [MongoDB](#mongodb)
-- [Postgres](#postgres)
-- [Redis](#redis)
-- [RethinkDB](#rethinkdb)
-
-
-## Amazon S3
-
-Not rewritten yet, to be filled in
-
+Configure the `storage` object in `config.json`.
 
 ## File
 
-Default storage option, with no further installation required.  
-Stores documents in a specified directory in files named with a md5 hash of the key to avoid any security issues.  
-Default path is `./data`  
-> **NOTE:** File storage option does not support document expiration!
-
-Config:
-
 ```json
-{
-	"type": "file",
-	"path": "./data"
-}
+{ "type": "file", "path": "./data" }
 ```
 
-
-## Memcached
-
-Not rewritten yet, to be filled in
-
-
-## MongoDB
-
-Stores documents in a specified database in a collection named `entries`.  
-Expiration property in config can be changed to a value in seconds after which entries will not be served.
-
-Optimal default config:  
-> **NOTE:** Depending on how your MongoDB server is configured, options as connectionUri may vary.  
-If server has no authentication, you can omit the `auth` object.  
-
-Check [documentation](https://mongodb.github.io/node-mongodb-native/3.5/api/MongoClient.html) for more detailed explanation about available `clientOptions` properties.
-
-```json
-{
-	"type": "mongodb",
-	"expire": 0,
-	"connectionUri": "mongodb://localhost:27017/haste",
-	"clientOptions": {
-		"useUnifiedTopology": true,
-		"useNewUrlParser": true,
-		"keepAlive": true,
-		"keepAliveInitialDelay": 60000,
-		"poolSize": 30,
-		"socketTimeoutMS": 360000,
-		"connectTimeoutMS": 360000,
-		"auth": {
-				"user": "username",
-				"password": "password"
-		},
-		"authSource": "admin"
-	}
-}
-```
-
-
-## Postgres
-
-(Optionally) Create a user for your database:  
-`CREATE USER haste WITH ENCRYPTED PASSWORD 'password';`
-
-You will have to create the database and add a table named `entries`. It can be easily done with the following queries:  
-`CREATE DATABASE haste OWNER haste;`  
-`CREATE TABLE entries (id SERIAL PRIMARY KEY, key VARCHAR(255) NOT NULL, value TEXT NOT NULL, expiration INT, UNIQUE(key));`
-
-Properties in `clientOptions` are optimal defaults and should be sufficient to run haste, however more detailed explanation for them can be found in pg package [documentation](https://node-postgres.com/api/client).  
-Expiration property in config can be changed to a value in seconds after which entries will not be served.
-
-```json
-{
-	"type": "postgres",
-	"expire": 0,
-	"clientOptions": {
-		"host": "localhost",
-		"port": 5432,
-		"user": "username",
-		"password": "password",
-		"database": "haste"
-	}
-}
-```
+Each filename is the lowercase MD5 digest of the UTF-8 paste key. The file contains
+the UTF-8 text, with no JSON envelope. Reuse the existing directory and ensure the
+server user can read/write it. New writes are published atomically and cannot
+overwrite an existing key. File storage does not expire documents, even when
+`expire` is configured.
 
 ## Redis
 
-Stores documents in a specified redis database.  
-Expiration property in config can be changed to a value in seconds after which entries will not be served.
-
-`redisOptions` object below contains default values, but you can adjust those to match your redis-server configuration. Check [documentation](https://github.com/luin/ioredis/blob/master/API.md#new-redisport-host-options) for more information about accepted values.
-
 ```json
 {
-	"type": "redis",
-	"expire": 0,
-	"redisOptions": {
-		"host": "127.0.0.1",
-		"port": 6379,
-		"db": 1
-	}
+  "type": "redis",
+  "expire": 31536000,
+  "redisOptions": { "host": "redis", "port": 6379, "db": 2 }
 }
 ```
 
-## RethinkDB
+Paste keys are unprefixed Redis string keys. Reuse the original database and
+Docker volume. New pastes receive the configured TTL (seconds); `/documents/:id`
+and `/raw/:id` reads renew it. Paste HTML, preview images, and collision checks
+do not extend TTLs. Static documents in `documents` are loaded without expiration
+and their reads never renew TTLs. Set `expire` to `0` or `false` to disable expiry.
 
-Not rewritten yet, to be filled in
+`redisOptions` accepts `host`, `port`, `db`, and optional `username`/`password`.
+Other ioredis-specific options are deliberately rejected; review them before
+converting a custom configuration. Redis TLS/cluster/sentinel are not implemented.
+
+Production uses database **2**, with a one-year sliding expiry. Do not run the
+replacement under another Compose project name: that would create a different
+`redis-data` volume. See [operations](operations.md) for backups and rollback.

@@ -7,7 +7,7 @@ cd "$repo_root"
 echo 'Preparing system tools and Redis (development/test only)'
 SECONDS=0
 missing=()
-for package in ca-certificates curl xz-utils redis-server; do
+for package in ca-certificates curl xz-utils redis-server build-essential python3; do
   dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed' || missing+=("$package")
 done
 if ((${#missing[@]})); then
@@ -54,11 +54,37 @@ SECONDS=0
 npm ci --include=dev --prefer-offline --no-audit --no-fund
 echo "Dependencies ready (${SECONDS}s)"
 
-echo 'Building browser bundle and preparing local configuration'
+echo 'Installing the pinned Rust toolchain'
 SECONDS=0
-# npm run build also runs an unlocked npm install; invoke its compiler directly.
-./node_modules/.bin/babel --plugins minify-mangle-names --no-comments --minified static/application.js --out-file static/application.min.js
-if [[ ! -f config.js ]]; then
-  cp -- example.config.js config.js
+if [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
+  rustup_script="$(mktemp)"
+  curl -fsSL https://sh.rustup.rs -o "$rustup_script"
+  sh "$rustup_script" -y --profile minimal --default-toolchain none
+  rm -f "$rustup_script"
+fi
+export PATH="$HOME/.cargo/bin:$PATH"
+rustup show active-toolchain
+rust_profile_marker="# code.tk.sg orb Rust toolchain"
+if ! grep -Fqx "$rust_profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$rust_profile_marker
+case "\$PWD/" in
+  "$repo_root/"*) export PATH="$HOME/.cargo/bin:\$PATH" ;;
+esac
+EOF
+fi
+echo "Rust ready (${SECONDS}s)"
+
+echo 'Building browser assets, Rust server, and preparing local configuration'
+SECONDS=0
+npm run build
+cargo build --locked
+if [[ ! -f config.json ]]; then
+  if [[ -f config.js ]]; then
+    node scripts/convert-config.js config.js config.json
+  else
+    cp -- example.config.json config.json
+  fi
 fi
 echo "Build and configuration ready (${SECONDS}s)"

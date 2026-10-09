@@ -1,6 +1,10 @@
 # Generators
 
-> **Upstream guide:** inherited from zneix/haste-server v0.2.5 (John Crepezzi, zneix, and contributors), under the [MIT licence](../LICENSE). Tinkercademy added this note; the text below is retained as upstream reference. In this fork, configuration is in `config.js`, not `config.json`; consult [`example.config.js`](../example.config.js) for current defaults.
+The Rust server retains Haste's random, phonetic, and dictionary generators.
+Configure `keyGenerator` and `keyLength` in `config.json`; consult
+[`example.config.json`](../example.config.json) for defaults. Keys are generated
+with the operating-system-seeded Rust RNG. Inserts cannot overwrite existing
+keys; an exhausted keyspace returns 503.
 
 Here's a list of all supported random string generators.  
 One of these is meant to be set in `config.json` as `keyGenerator` object.  

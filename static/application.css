@@ -346,7 +346,7 @@ body.key-overlay #box .key-spacer {
 	font-size: 14px;
 }
 
-#more-panel .menu-row, #more-panel .menu-links a {
+#more-panel .menu-row, #more-panel .menu-links a:not([hidden]) {
 	display: flex;
 	align-items: center;
 	gap: 10px;

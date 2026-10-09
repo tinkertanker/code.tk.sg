@@ -13,7 +13,11 @@ agent-browser eval '(() => {
   if (!document.querySelector("#share-panel").hidden) throw Error("Menu must start closed");
   if (document.querySelector(".save").classList.contains("dirty")) throw Error("New draft must start clean");
   if (getComputedStyle(document.querySelector(".copy")).display !== "none") throw Error("Drafts must hide Copy all");
-  if (!document.querySelector("#download-link").hidden) throw Error("Drafts must hide download");
+  document.querySelector(".more").click();
+  for (const id of ["#download-link", "#raw-link"]) {
+    if (getComputedStyle(document.querySelector(id)).display !== "none") throw Error("Drafts must hide " + id);
+  }
+  document.querySelector(".more").click();
 })()'
 agent-browser fill textarea 'const message = "toolbar regression test";'
 agent-browser eval '(() => {
@@ -101,6 +105,17 @@ agent-browser eval '(async () => {
   await tick(); await tick();
   check(copied === app.doc.data, "Copy all copies the exact paste");
   check(copy.textContent === "Copied!", "Copy all confirms");
+  const execCommand = document.execCommand;
+  let fallback;
+  navigator.clipboard.writeText = async () => { throw Error("Denied"); };
+  document.execCommand = function(command) { fallback = command === "copy" && document.querySelector("textarea.sr-only").value; return true; };
+  try {
+    copy.click();
+    await tick(); await tick();
+  } finally {
+    document.execCommand = execCommand;
+  }
+  check(fallback === app.doc.data && copy.textContent === "Copied!", "Copy all falls back when the Clipboard API fails");
   const more = document.querySelector(".more");
   const panel = document.querySelector("#more-panel");
   check(panel.hidden, "More menu starts closed");
@@ -125,5 +140,10 @@ agent-browser eval '(async () => {
   more.click();
   document.dispatchEvent(new KeyboardEvent("keydown", { keyCode: 27, bubbles: true }));
   check(panel.hidden && document.activeElement === more, "Escape closes more menu");
+  document.querySelector(".duplicate").click();
+  more.click();
+  for (const id of ["#download-link", "#raw-link"]) {
+    check(getComputedStyle(document.querySelector(id)).display === "none", "Duplicated draft hides " + id);
+  }
   return "PASS: copy all, more menu, text size, wrap switch, download";
 })()'

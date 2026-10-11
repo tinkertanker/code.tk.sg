@@ -79,15 +79,16 @@ workstation with Docker and about 8 GB of free RAM):
 The script refuses a dirty checkout, builds the Docker `test` target and the
 runtime image locally as `code-tk:<revision>`, and streams it to the server with
 `docker save | ssh … docker load`. On the server it pulls with `--ff-only`, copies
-Compose and the production template, retags the running image as
-`code-tk:previous` and the new one as `code-tk:current` (the image named in
-`docker-compose.yml`), checks configuration readability in a disposable preflight
-container, and recreates `haste` with `--no-build`, waiting for health checks.
+Compose and the production template, checks configuration readability in a
+disposable preflight container of the new revision (`CODE_TK_TAG=<revision>`),
+then retags the running image as `code-tk:previous` and the new one as
+`code-tk:current` (the default image in `docker-compose.yml`) and recreates
+`haste` with `--no-build`, waiting for health checks.
 The build uses a clean `git archive` of `HEAD`, so untracked local files never
 reach the image. The preflight disables proxy discovery and does not start Redis;
-if it fails, the tag is reverted and the running service is untouched. If the new
+if it fails, no tags change and the running service is untouched. If the new
 container fails its health check, the script retags `code-tk:previous` and
-recreates `haste` from it. Older `code-tk:<revision>` tags are pruned after a
+recreates `haste` from it (only when this run moved `code-tk:current`). Older `code-tk:<revision>` tags are pruned after a
 successful rollout. The script preserves an
 existing `config.json` and refuses an unconverted legacy config. Pass `--no-pull`
 when the server already has the intended revision or `--logs` to follow the

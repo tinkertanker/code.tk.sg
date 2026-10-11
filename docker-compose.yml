@@ -1,7 +1,7 @@
 services:
   haste:
     # Built off-host and loaded by deploy.sh; never build on the server.
-    image: code-tk:current
+    image: code-tk:${CODE_TK_TAG:-current}
     pull_policy: never
     expose:
       - 7777

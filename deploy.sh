@@ -80,42 +80,35 @@ ssh "$REMOTE_HOST" "cd $REMOTE_DIR && if [ ! -f config.json ]; then
   cp config.production.json config.json
 fi"
 
-# Keep the running image as code-tk:previous for rollback, then point
-# code-tk:current (used by docker-compose.yml) at the new revision. Re-deploying
-# the same image leaves code-tk:previous untouched.
-echo "==> Tagging $IMAGE as code-tk:current..."
-ssh "$REMOTE_HOST" "if docker image inspect code-tk:current >/dev/null 2>&1 &&
-  [ \"\$(docker image inspect -f '{{.Id}}' code-tk:current)\" != \"\$(docker image inspect -f '{{.Id}}' $IMAGE)\" ]; then
-  docker tag code-tk:current code-tk:previous
-elif ! docker image inspect code-tk:current >/dev/null 2>&1 && docker image inspect codetksg-haste:latest >/dev/null 2>&1; then
-  docker tag codetksg-haste:latest code-tk:previous  # first deploy: Compose-built image
-fi
-docker tag $IMAGE code-tk:current"
-
-# Point code-tk:current back at code-tk:previous, or drop it on a first deploy.
-revert_tag() {
-  ssh "$REMOTE_HOST" "if docker image inspect code-tk:previous >/dev/null 2>&1; then
-    docker tag code-tk:previous code-tk:current
-  else
-    docker rmi code-tk:current >/dev/null
-  fi" || true
-}
-
+# Preflight the new revision by its own tag; production tags are untouched until it passes.
 # Disable proxy discovery for this disposable preflight container.
 echo "==> Checking runtime access to private configuration..."
-if ! ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose config --quiet && docker compose run --rm --no-deps -e VIRTUAL_HOST= --entrypoint sh haste -c 'test -r /app/config.json'"; then
+if ! ssh "$REMOTE_HOST" "cd $REMOTE_DIR && CODE_TK_TAG=$REVISION docker compose config --quiet && CODE_TK_TAG=$REVISION docker compose run --rm --no-deps -e VIRTUAL_HOST= --entrypoint sh haste -c 'test -r /app/config.json'"; then
   echo 'Runtime configuration preflight failed. Ensure UID 1001 can read config.json; see docs/operations.md. The running service has not been replaced.' >&2
-  revert_tag
   exit 1
 fi
+
+# Keep the running image as code-tk:previous for rollback, then point
+# code-tk:current (used by docker-compose.yml) at the new revision. Re-deploying
+# the same image changes nothing. Prints "changed" when current moved.
+echo "==> Tagging $IMAGE as code-tk:current..."
+SWAP="$(ssh "$REMOTE_HOST" "new=\$(docker image inspect -f '{{.Id}}' $IMAGE)
+if docker image inspect code-tk:current >/dev/null 2>&1; then
+  [ \"\$(docker image inspect -f '{{.Id}}' code-tk:current)\" = \"\$new\" ] && exit 0
+  docker tag code-tk:current code-tk:previous
+elif docker image inspect codetksg-haste:latest >/dev/null 2>&1; then
+  docker tag codetksg-haste:latest code-tk:previous  # first deploy: Compose-built image
+fi
+docker tag $IMAGE code-tk:current
+echo changed")"
+
 echo "==> Updating containers and waiting for health checks..."
 if ! ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose up -d --no-build --wait --wait-timeout 120"; then
-  echo "New container failed its health check; rolling back to code-tk:previous..." >&2
-  if ssh "$REMOTE_HOST" "docker image inspect code-tk:previous >/dev/null 2>&1"; then
-    revert_tag
-    ssh "$REMOTE_HOST" "cd $REMOTE_DIR && docker compose up -d --no-build --wait --wait-timeout 120 haste" || true
+  if [ "$SWAP" = changed ] && ssh "$REMOTE_HOST" "docker image inspect code-tk:previous >/dev/null 2>&1"; then
+    echo "New container failed its health check; rolling back to code-tk:previous..." >&2
+    ssh "$REMOTE_HOST" "docker tag code-tk:previous code-tk:current && cd $REMOTE_DIR && docker compose up -d --no-build --wait --wait-timeout 120 haste" || true
   else
-    echo 'No code-tk:previous to roll back to; see docs/operations.md.' >&2
+    echo 'Container failed its health check; no automatic rollback applies. See docs/operations.md.' >&2
   fi
   exit 1
 fi

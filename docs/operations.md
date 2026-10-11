@@ -83,8 +83,12 @@ Compose and the production template, retags the running image as
 `code-tk:previous` and the new one as `code-tk:current` (the image named in
 `docker-compose.yml`), checks configuration readability in a disposable preflight
 container, and recreates `haste` with `--no-build`, waiting for health checks.
-The preflight disables proxy discovery and does not start Redis; if it fails, the
-tag is reverted and the running service is untouched. The script preserves an
+The build uses a clean `git archive` of `HEAD`, so untracked local files never
+reach the image. The preflight disables proxy discovery and does not start Redis;
+if it fails, the tag is reverted and the running service is untouched. If the new
+container fails its health check, the script retags `code-tk:previous` and
+recreates `haste` from it. Older `code-tk:<revision>` tags are pruned after a
+successful rollout. The script preserves an
 existing `config.json` and refuses an unconverted legacy config. Pass `--no-pull`
 when the server already has the intended revision or `--logs` to follow the
 resulting Compose logs.
@@ -96,8 +100,8 @@ docker tag code-tk:previous code-tk:current
 docker compose up -d --no-build --wait haste
 ```
 
-Deployments made before this flow used the Compose-built image
-`codetksg-haste`; tag that as `code-tk:current` to return to it.
+The first deploy with this flow tags the previously running Compose-built image
+`codetksg-haste:latest` as `code-tk:previous`, so the same rollback applies.
 
 Keep `config.json` local and private. It is ignored by Git; use
 `config.production.json` as the tracked template for a **new** production install.

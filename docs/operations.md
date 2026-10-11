@@ -67,19 +67,37 @@ RDB merely to roll back code; doing so would lose pastes created since the backu
 
 ## Deployment
 
-Production runs on `dev.tk.sg` in `Docker/code.tk.sg`. From a local checkout, run:
+Production runs on `dev.tk.sg` in `Docker/code.tk.sg`. **Never build on that host**:
+it is shared, and the Rust release build exhausted its memory and took it down on
+2026-10-10. Build wherever you run the deploy (an Amp orb, a Devin VM, or a
+workstation with Docker and about 8 GB of free RAM):
 
 ```sh
 ./deploy.sh
 ```
 
-The script pulls with `--ff-only`, copies Compose and the production template,
-tests/builds and checks configuration readability before recreation, and waits
-for health checks. The disposable preflight container disables proxy discovery
-and does not start Redis. The script preserves an
-existing `config.json` and refuses an unconverted legacy config. Pass
-`--no-pull` when the server already has the intended revision or `--logs` to
-follow the resulting Compose logs.
+The script refuses a dirty checkout, builds the Docker `test` target and the
+runtime image locally as `code-tk:<revision>`, and streams it to the server with
+`docker save | ssh … docker load`. On the server it pulls with `--ff-only`, copies
+Compose and the production template, retags the running image as
+`code-tk:previous` and the new one as `code-tk:current` (the image named in
+`docker-compose.yml`), checks configuration readability in a disposable preflight
+container, and recreates `haste` with `--no-build`, waiting for health checks.
+The preflight disables proxy discovery and does not start Redis; if it fails, the
+tag is reverted and the running service is untouched. The script preserves an
+existing `config.json` and refuses an unconverted legacy config. Pass `--no-pull`
+when the server already has the intended revision or `--logs` to follow the
+resulting Compose logs.
+
+To roll back the application image:
+
+```sh
+docker tag code-tk:previous code-tk:current
+docker compose up -d --no-build --wait haste
+```
+
+Deployments made before this flow used the Compose-built image
+`codetksg-haste`; tag that as `code-tk:current` to return to it.
 
 Keep `config.json` local and private. It is ignored by Git; use
 `config.production.json` as the tracked template for a **new** production install.

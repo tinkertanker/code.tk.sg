@@ -92,7 +92,8 @@ fi
 # code-tk:current (used by docker-compose.yml) at the new revision. Re-deploying
 # the same image changes nothing. Prints "changed" when current moved.
 echo "==> Tagging $IMAGE as code-tk:current..."
-SWAP="$(ssh "$REMOTE_HOST" "new=\$(docker image inspect -f '{{.Id}}' $IMAGE)
+SWAP="$(ssh "$REMOTE_HOST" "set -e
+new=\$(docker image inspect -f '{{.Id}}' $IMAGE)
 if docker image inspect code-tk:current >/dev/null 2>&1; then
   [ \"\$(docker image inspect -f '{{.Id}}' code-tk:current)\" = \"\$new\" ] && exit 0
   docker tag code-tk:current code-tk:previous

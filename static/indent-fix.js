@@ -9,7 +9,7 @@
 //   Leading tabs become spaces at the paste's own indent width.
 // - A whole paste indented by an extra amount (copied from inside a block).
 //
-// Pastes containing multiline string delimiters (""", ''' or backticks) are
+// Pastes containing multiline string delimiters (""", ''', backticks or <<-) are
 // left alone entirely: any of these fixes could change a string's contents.
 //
 // It never re-indents code structurally: guessing block levels needs a parser
@@ -44,7 +44,8 @@
 
   // Removing shared indentation would also change multiline string contents
   function hasMultilineStrings(text) {
-    return /"""|'''|`/.test(text);
+    // <<- heredocs strip leading tabs, so converting tabs changes them too
+    return /"""|'''|`|<<-/.test(text);
   }
 
   // Smallest space indentation, clamped to 2-8; 4 when nothing indents with spaces

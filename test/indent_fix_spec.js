@@ -74,5 +74,6 @@ describe('indentation fixing', function(){
 		strictEqual(analyze('def f():\n    s = """\n\tkeep tab\n    """\n\tx = 1\n'), null);
 		strictEqual(analyze('x = `\n\u00a0\u00a0kept\n`\n\u00a0\u00a0y()\n'), null);
 		strictEqual(analyze("a = '''\n\tkept\n'''\n  \tb\n"), null);
+		strictEqual(analyze('main() {\n  cat <<-EOF\n\thello\n\tEOF\n}\n'), null);
 	});
 });

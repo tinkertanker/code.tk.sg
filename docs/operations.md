@@ -31,7 +31,10 @@ Secrets and variables → Actions, or on the `production` environment) holding a
 Cloudflare API token for the Tinkertanker account. Ideally scope it to
 **Workers Scripts: Edit**, **D1: Edit** and **Workers Routes: Edit** (zone
 `tk.sg`). Without it the job skips deploying with a warning, and production
-stays on its current version.
+stays on its current version. Prefer a `production` environment secret with a
+`main`-only deployment branch rule, and rotate the token periodically. The deploy
+job installs dependencies with `--ignore-scripts` and passes the token only to
+the credential check and the wrangler step.
 
 To deploy by hand (for example to redeploy after a rollback), use a token with
 the same access (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only
@@ -67,9 +70,14 @@ npx wrangler deployments list
 npx wrangler rollback <version-id>
 ```
 
-Rolling back code does not touch D1 data. Rolling back to a version from before 2026-10-12's per-IP rate
-limiter leaves pending limiter alarms without a handler: they fail and retry
-harmlessly in the logs, and rolling forward again cleans up. If a migration changed the schema,
+Rolling back code does not touch D1 data. A rollback lasts only until the next
+merge to `main` redeploys it, so revert the bad change on `main` too (or hold
+merges). If the CI deploy job fails after `wrangler deploy` (for example the
+smoke test fails), the new version is live: check production and roll back.
+
+Rolling back to a version from before the per-IP rate limiter (2026-10-12)
+leaves pending limiter alarms without a handler: they fail and retry harmlessly
+in the logs, and rolling forward again cleans up. If a migration changed the schema,
 check the older code still works with it before rolling back.
 
 ## Backups

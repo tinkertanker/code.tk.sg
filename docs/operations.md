@@ -1,210 +1,92 @@
 # Maintainer operations
 
-This runbook covers the code.tk.sg deployment. It is not required to run the server
-locally.
-
 ## Architecture
 
-- `haste` is the Rust application built from the `Dockerfile`, running as UID 1001.
-- `redis` runs Redis 7 Alpine with data in the `redis-data` Docker volume.
-- `config.production.json` selects Redis database 2 and expires pastes after one
-  year of inactivity.
-- The application listens on port 7777 inside the Docker network. The host's
-  reverse proxy provides the public endpoint (`VIRTUAL_HOST=code.tk.sg`,
-  `VIRTUAL_PORT=7777`, `CERT_NAME=tk.sg`). No host port is published.
-- The external `devtksg` network and proxy/certificates are managed separately by
-  [sysops-devtksg-dockerinfra](https://github.com/tinkertanker/sysops-devtksg-dockerinfra).
+code.tk.sg is a Cloudflare Worker in the Tinkertanker Cloudflare account.
 
-## First Rust cutover (operator approval required)
+| | Production | Staging |
+|---|---|---|
+| Worker | `code-tk` | `code-tk-staging` |
+| Hostname | `code.tk.sg` (Worker custom domain) | `code-staging.tk.sg`, `code-tk-staging.tinkertanker.workers.dev` |
+| D1 database | `code-tk-prod` | `code-tk-staging` |
+| Rate limiter | Durable Object `RateLimiter` | its own `RateLimiter` |
 
-There is **no paste-data migration**. Do not rename the Compose project, Redis
-service, volume, or database. Do not use `docker compose down -v`.
+Both are defined in `worker/wrangler.jsonc` (production at top level, staging
+under `env.staging`). The Worker serves `static/` as Workers Static Assets, stores
+pastes in D1 (`worker/migrations/`), and deletes expired pastes in a daily cron
+(00:00 UTC). Other `*.tk.sg` names still resolve through the `*.tk.sg` wildcard;
+the custom domain overrides it for `code.tk.sg` only.
 
-Before updating the checkout/Compose file on the host:
+## Deploying
 
-1. Take and validate a Redis backup using the procedures below.
-2. Record `docker compose ls`, `docker compose ps`, and the Redis volume name.
-   Tag the current application image `code-tk:pre-rust` and save the old Compose
-   file and `config.js` privately for rollback.
-3. Convert the live JS config while the old Node container is still running.
-   From `Docker/code.tk.sg`, use a private temporary output and only publish it
-   after the command succeeds:
-
-   ```sh
-   umask 077
-   docker compose exec -T haste node -e \
-     'process.stdout.write(JSON.stringify(require("./config"), null, 2) + "\n")' > config.json.tmp && \
-     test ! -e config.json && mv config.json.tmp config.json
-   ```
-
-4. Review the JSON, especially database **2**, expiry, static documents, and any
-   custom credentials/options. Rust supports file/Redis storage and common Redis
-   connection settings; unsupported settings fail startup. Ensure UID 1001 can
-   read the file. On the deployment host, set restrictive ownership/permissions:
-
-   ```sh
-   sudo chown 1001:1001 config.json
-   sudo chmod 0600 config.json
-   ```
-
-   The converter creates a private 0600 file owned by its invoking user, which
-   may not be UID 1001. Do not make configuration world-readable to work around
-   this. The deploy script checks access as the actual container user before
-   replacing the running service; it does not change existing file permissions.
-5. Build the test target and runtime **before** replacing the running container.
-   Keep Redis running; use `docker compose up -d --wait` in the same deployment
-   directory with the original project identity.
-6. Verify a known old paste via `/documents/key`, `/raw/key`, `/key.py`, and
-   `/preview/key.py.png`, then save/reload a new Unicode paste. Verify TLS through
-   the public proxy and compare Redis counts/TTLs. A TCP health check confirms
-   the process is listening, not that the public proxy/storage works.
-
-Rollback: restore the privately saved old Compose/config files and pin `haste`
-to the tagged `code-tk:pre-rust` image (remove `build` in that rollback file).
-Recreate only `haste`, without building or stopping Redis. Pastes created by Rust
-remain readable by Node because the formats are unchanged. Do not restore an old
-RDB merely to roll back code; doing so would lose pastes created since the backup.
-
-## Deployment
-
-Production runs on `dev.tk.sg` in `Docker/code.tk.sg`. **Never build on that host**:
-it is shared, and the Rust release build exhausted its memory and took it down on
-2026-10-10. Build wherever you run the deploy (an Amp orb, a Devin VM, or a
-workstation with Docker and about 8 GB of free RAM):
+Deploys need a Cloudflare API token with Workers and D1 access for the
+Tinkertanker account (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only
+what is merged to `main`, staging first:
 
 ```sh
-./deploy.sh
+git checkout main && git pull
+npm ci && npm run build
+cd worker && npm ci
+npx wrangler deploy --env staging   # check https://code-staging.tk.sg
+npx wrangler deploy                 # production
 ```
 
-The script refuses a dirty checkout, builds the Docker `test` target and the
-runtime image locally as `code-tk:<revision>`, and streams it to the server with
-`docker save | ssh … docker load`. On the server it pulls with `--ff-only`, copies
-Compose and the production template, checks configuration readability in a
-disposable preflight container of the new revision (`CODE_TK_TAG=<revision>`),
-then retags the running image as `code-tk:previous` and the new one as
-`code-tk:current` (the default image in `docker-compose.yml`) and recreates
-`haste` with `--no-build`, waiting for health checks.
-The build uses a clean `git archive` of `HEAD`, so untracked local files never
-reach the image. The preflight disables proxy discovery and does not start Redis;
-if it fails, no tags change and the running service is untouched. If the new
-container fails its health check, the script retags `code-tk:previous` and
-recreates `haste` from it (only when this run moved `code-tk:current`). Older `code-tk:<revision>` tags are pruned after a
-successful rollout. The script preserves an
-existing `config.json` and refuses an unconverted legacy config. Pass `--no-pull`
-when the server already has the intended revision or `--logs` to follow the
-resulting Compose logs.
+After a production deploy, check the home page, an existing paste
+(`/raw/<key>`), saving a new paste, and a preview image
+(`/preview/<key>.png`). Bump the `?v=` keys in `static/index.html` when changing
+static CSS or JS so browsers fetch the new files.
 
-To roll back the application image:
+Schema changes go in a new `worker/migrations/NNNN_*.sql` file. Apply them to
+staging and production before deploying code that needs them:
 
 ```sh
-docker tag code-tk:previous code-tk:current
-docker compose up -d --no-build --wait haste
+npx wrangler d1 migrations apply DB --env staging --remote
+npx wrangler d1 migrations apply DB --remote
 ```
 
-The first deploy with this flow tags the previously running Compose-built image
-`codetksg-haste:latest` as `code-tk:previous`, so the same rollback applies.
+## Rollback
 
-Keep `config.json` local and private. It is ignored by Git; use
-`config.production.json` as the tracked template for a **new** production install.
+Each deploy creates a Worker version. List and roll back with:
 
-### Jenkins
+```sh
+npx wrangler deployments list
+npx wrangler rollback <version-id>
+```
 
-Create a Pipeline-from-SCM job pointing at this repository's `Jenkinsfile`.
-The existing Jenkins host mounts the Docker socket; its agent needs Docker CLI
-access. The pipeline builds the Docker `test` target (Rust lint/HTTP compatibility
-and frontend tests), then a runtime image tagged with the Git revision. It never
-pushes or deploys. Do not run Compose from a Jenkins workspace: doing so can
-create a new empty Redis volume. An authorized rollout runs from the existing
-`Docker/code.tk.sg` directory instead.
-
-## Security maintenance
-
-`maxLength` limits UTF-8 bytes rather than JavaScript characters. Raw uploads are
-rejected as soon as they exceed it. Multipart uploads accept one `data` field and
-no files. The whole multipart body is capped at `maxLength` plus 16 KiB for the
-envelope, including any preamble; fields and decoded text still obey `maxLength`.
-Malformed forms return 400, and oversized bodies/fields return 413 without saving
-a paste. UTF-8, Latin-1/ASCII, UTF-16LE, and base64 field encodings retain
-the legacy parser's decoding. Other charsets return 400 instead of crashing the
-server as they did in Haste. Do not use `maxLength: 0` on a public deployment. Configure
-reverse-proxy body-size and timeout limits as additional protection.
-
-The Rust server does not parse query parameters. Request rate limits retain the
-old socket-IP policy: forwarded IP headers are not trusted. Behind nginx-proxy,
-clients therefore share the proxy's bucket, just as with the previous Express
-configuration. Changing that policy requires a separate trusted-proxy decision.
-Preview rendering uses two dedicated threads, each retaining at most one QuickJS
-context, rather than Tokio's shared file-I/O pool. It has bounded concurrency and a
-200-entry PNG cache; excess simultaneous renders return 503. Paste writes are
-atomic insert-only; exhausted keyspaces return 503 instead of hanging/overwriting.
-
-Build tools are excluded from the runtime image. On a fresh checkout, run
-`npm ci && npm run build` before direct Rust builds or checks: the build generates
-the ignored `lib/preview-highlight.js` embedded by Rust. Rust builds use the
-committed Cargo lockfile. Run `npm audit` and
-Rust dependency advisory checks when updating dependencies. The vendored highlighter and
-CDN jQuery require separate advisory checks. Rebuild the highlighter with
-`scripts/build-highlight.sh`, which downloads the official highlight.js CDN
-assets with npm; edit its language list to add or remove languages.
+Rolling back code does not touch D1 data. If a migration changed the schema,
+check the older code still works with it before rolling back.
 
 ## Backups
 
-`scripts/backup.sh` triggers a Redis `BGSAVE` and copies the RDB snapshot. It
-writes to `backups/` by default; set `BACKUP_BASE` to override that location.
-Backup directories and RDB files are ignored by Git.
+- **D1 Time Travel:** Cloudflare keeps 30 days of point-in-time history for D1.
+  Restore with `npx wrangler d1 time-travel restore code-tk-prod --timestamp <ISO>`
+  (this replaces the live database; export it first).
+- **Exports:** `npx wrangler d1 export code-tk-prod --remote --output code-tk-prod.sql`
+  writes a full SQL dump. Store exports privately: they contain every paste.
+- **Pre-migration backup:** the last Redis snapshot from the old server
+  (2026-10-12) is in the private R2 bucket `code-tk-backups` under
+  `redis-db/20261012T0405Z/`. `scripts/rdb-to-d1/` converts it to D1 SQL.
 
-The retention policy is:
+## Security notes
 
-- daily snapshots for 7 days;
-- Sunday snapshots for 28 days;
-- first-of-month snapshots for 365 days;
-- first-of-January snapshots forever.
-
-Run `./scripts/backup.sh` from a Docker checkout. If no `docker-compose.yml` is
-present, the script uses a standalone local Redis instance. Pass `--remote` to
-run the Docker backup on `tinkertanker@dev.tk.sg`.
-
-Production runs this cron entry:
-
-```cron
-0 2 * * * cd /home/tinkertanker-server/Docker/code.tk.sg && ./scripts/backup.sh >> /home/tinkertanker-server/Docker/code.tk.sg/backups/backup.log 2>&1
-```
-
-These snapshots are stored on the Redis host. They protect against accidental
-volume deletion, but not loss of the host or deployment directory. Copy important
-snapshots off-host when that risk must be covered.
-
-Validate a snapshot before relying on it:
-
-```sh
-redis-check-rdb backups/daily/dump-YYYY-MM-DD.rdb
-```
-
-### Restore
-
-Restoring requires brief downtime:
-
-1. Stop the application so it cannot write.
-2. Take a safety snapshot while Redis is still running, then stop Redis.
-3. Replace Redis's `dump.rdb` with the validated backup.
-4. Start Redis and confirm it contains the expected data.
-5. Start the application and check a recovered document and the public service.
-
-Keep the safety snapshot until the restore is verified. Never overwrite the only
-copy of live data.
+- `MAX_LENGTH` (400000) limits UTF-8 bytes. Raw uploads are rejected as soon as
+  they exceed it; multipart bodies may add 16 KiB of envelope and accept one
+  `data` field and no files. Unknown charsets return 400.
+- Rate limiting is one fixed window shared by all routes (250 requests per 30
+  minutes per client IP from `CF-Connecting-IP`; forwarded headers are never
+  trusted). If the limiter errors, requests are allowed through and the error is
+  logged ("Rate limiter failed").
+- Saves are insert-only; an exhausted keyspace returns 503 instead of
+  overwriting. Pastes are unlisted, not private: anyone with the URL can read one.
+- Run `npm audit` in the repository root and in `worker/` when updating
+  dependencies. Rebuild the browser highlighter with `scripts/build-highlight.sh`
+  (edit its language list to add or remove languages); jQuery is loaded from its
+  CDN with subresource integrity.
 
 ## Amp orbs
 
-`.agents/setup` installs Node 20.20.0, Rust 1.94, a C compiler, Redis, and the locked
-dependencies, then builds the browser assets and Rust binary. It converts a
-trusted existing `config.js` only if `config.json` is absent; otherwise it preserves
-the JSON or copies the file-storage example. No production credentials or Docker daemon
-are required.
-
-Run `amp orb services ensure` to start the application and an isolated,
-non-persistent Redis instance. The command prints a reviewable portal URL. Run
-`npm test` for frontend tests and `python3 tests/compatibility.py` for isolated
-HTTP/storage checks. Outside the setup script, first run `npm ci && npm run build`
-to generate the embedded highlighter before any direct Rust checks. Run
-`cargo fmt -- --check` and
-`cargo clippy --locked --all-targets -- -D warnings` for Rust checks.
+`.agents/setup` installs Node 22 and the locked dependencies, builds the browser
+assets, and creates the local D1 schema. No Cloudflare credentials are needed for
+local work. `amp orb services ensure` starts the Worker with `wrangler dev`
+(local D1) and prints a portal URL. Never build or deploy from an orb without
+explicit approval; use the commands above.

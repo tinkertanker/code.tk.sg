@@ -1,18 +1,26 @@
 # Agent notes
 
+## Architecture
+
+code.tk.sg is a Cloudflare Worker (`worker/`) serving the browser UI in
+`static/`, with pastes in Cloudflare D1. There is no server to SSH into; the old
+Rust/Docker deployment on `dev.tk.sg` was retired on 2026-10-12. See
+`docs/operations.md`.
+
+## Working locally
+
+- Run `npm ci && npm run build` (repo root) before Worker tests or `wrangler dev`.
+- Tests: `npm test` (frontend), `npm --prefix worker run typecheck`,
+  `npm --prefix worker test`. The HTTP contract suite `tests/compatibility.py`
+  runs against `npm --prefix worker run dev:compat` (see `worker/README.md`).
+- Local development needs no Cloudflare credentials.
+
 ## Deploying
 
-- **Never build on the production host (`dev.tk.sg`).** It is shared with other
-  sites, and the Rust release build exhausted its memory and took the host down
-  on 2026-10-10. Do not run `docker build`, `docker compose build`, or `cargo`
-  there.
-- Build in your own environment and run `./deploy.sh` from there. It builds and
-  tests the image locally, streams it to the server with `docker load`, and only
-  restarts the container on the host.
-  - **Amp:** use your orb. Prefer `a1.medium` or larger (the build needs several
-    GB of RAM). Start Docker first if needed: `sudo dockerd >/tmp/dockerd.log 2>&1 &`.
-  - **Devin:** use your Devin VM.
-- SSH access comes from the `DEPLOY_SSH_PRIVATE_KEY_B64` secret (base64 private
-  key for `tinkertanker@dev.tk.sg`). Never print it.
-- Deploying requires explicit user approval. See `docs/operations.md` for
-  rollback (`code-tk:previous`) and post-deploy checks.
+- Deploying requires explicit user approval, per deploy. Deploy only `main`,
+  staging (`--env staging`) before production; see `docs/operations.md` for
+  commands, post-deploy checks and rollback.
+- Credentials: the `CLOUDFLARE_API_KEY_TT` secret is an API token for the
+  Tinkertanker account (export it as `CLOUDFLARE_API_TOKEN`). Never print it.
+- Never touch D1 production data (imports, deletes, time-travel restores) without
+  explicit approval; pastes are user data.

@@ -16,8 +16,8 @@ text from Tinkercademy's deployment instructions and service policies.
 
 Applies to `static/highlight.min.js` and the adapted highlight.js theme. The
 browser bundle combines the official common build with official language
-modules from the same release. The Rust server embeds the complete `highlight.js`
-registry of the same release in QuickJS to colour link preview images.
+modules from the same release. The Worker bundles the complete `highlight.js`
+registry of the same release (npm) to colour link preview images.
 Source: <https://github.com/highlightjs/highlight.js/blob/11.12.0/LICENSE>.
 
 ```text
@@ -182,13 +182,11 @@ each with its licence in `OFL.txt` alongside:
 
 ## Other dependencies and branding
 
-npm build dependencies retain their licences in `node_modules` and are not
-shipped in the runtime image. Rust dependencies are locked in `Cargo.lock`;
-the Docker build preserves their packaged LICENSE/COPYING/NOTICE files under
-`/usr/share/doc/code-tk/dependencies`. QuickJS is MIT-licensed and resvg is
-dual-licensed under Apache-2.0 or MIT; their sources remain available through
-the versions recorded in the lockfile. This document does not replace those
-licences or the terms of separately distributed Node, Debian, or Redis images.
+npm dependencies retain their licences in `node_modules`; versions are locked
+in `package-lock.json` and `worker/package-lock.json`. Runtime dependencies
+bundled into the Worker are `highlight.js` (BSD-3-Clause),
+`@resvg/resvg-wasm` (MPL-2.0) and `@mjackson/multipart-parser` (MIT). This
+document does not replace those licences.
 
 The software licences do not grant trademark rights or imply endorsement by
 upstream authors or Tinkercademy. The custom branding restored from an earlier

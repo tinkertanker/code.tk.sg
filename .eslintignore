@@ -1,4 +1,2 @@
 **/*.min.js
 static/vendor/
-config.js
-example.config.js

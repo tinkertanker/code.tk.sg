@@ -1,7 +1,7 @@
 {
 	"name": "haste",
 	"version": "0.2.5",
-	"description": "Browser assets and syntax engine for the Rust code.tk.sg server",
+	"description": "Browser frontend for code.tk.sg (served by the Cloudflare Worker in worker/)",
 	"keywords": [
 		"paste",
 		"pastebin",
@@ -22,8 +22,8 @@
 		"mocha": "^12.0.1"
 	},
 	"scripts": {
-		"build": "babel --plugins minify-mangle-names --no-comments --minified static/application.js --out-file static/application.min.js && node scripts/build-preview-highlight.js",
-		"start": "cargo run --locked",
+		"build": "babel --plugins minify-mangle-names --no-comments --minified static/application.js --out-file static/application.min.js",
+		"start": "npm run build && npm --prefix worker run dev",
 		"test": "mocha --recursive",
 		"testformat": "npx eslint ./"
 	}

@@ -65,7 +65,9 @@ npx wrangler rollback <version-id>
 ```
 
 Add `--env staging` to either command for staging. Rolling back code does not
-touch D1 data. If a migration changed the schema,
+touch D1 data. Rolling back to a version from before 2026-10-12's per-IP rate
+limiter leaves pending limiter alarms without a handler: they fail and retry
+harmlessly in the logs, and rolling forward again cleans up. If a migration changed the schema,
 check the older code still works with it before rolling back.
 
 ## Backups
@@ -86,11 +88,12 @@ check the older code still works with it before rolling back.
   `data` field and no files. Unknown charsets return 400.
 - Rate limiting allows 250 requests per 30-minute window per client IP
   (`CF-Connecting-IP`; forwarded headers are never trusted), shared by all
-  routes. Each IP has its own Durable Object, and its window starts at its first
-  request, and its storage is deleted once that window has passed. If the limiter errors, requests are allowed through and the error is
-  logged ("Rate limiter failed"). For floods from many IPs, add a Cloudflare WAF
+  routes. Each IP has its own Durable Object: its window starts at its first
+  request, and an alarm deletes its storage once the window has passed. If the
+  limiter errors, requests are allowed through and the error is logged ("Rate
+  limiter failed"). For floods from many IPs, add a Cloudflare WAF
   rate-limiting rule in front of the Worker.
-- Preview images are rendered once and then reused from Cloudflare's edge cache
+- Preview images are rendered once per Cloudflare data center and then reused from its edge cache
   (for up to a day); browsers keep one for 5 minutes. The paste is always checked
   first, so an expired paste's preview stops being served when the paste does.
 - Expired pastes are deleted nightly in batches of 1,000 (up to 100,000 per run).

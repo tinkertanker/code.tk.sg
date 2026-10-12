@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "code-tk", // production: deploy only at cutover
+  "name": "code-tk", // production
   "workers_dev": false,
+  "routes": [{ "pattern": "code.tk.sg", "custom_domain": true }],
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "assets": {

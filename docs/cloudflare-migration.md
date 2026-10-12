@@ -1,6 +1,7 @@
 # Moving code.tk.sg to Cloudflare Workers
 
-Status: in progress (started 2026-10-12). Owner thread:
+Status: **cut over 2026-10-12** (code.tk.sg served by Worker `code-tk`, D1
+`code-tk-prod`, loaded from the 04:05Z backup). Started 2026-10-12. Owner thread:
 https://ampcode.com/threads/T-7ef64b2c-8570-41ac-8e77-4f860998aa75
 
 ## Why
@@ -104,3 +105,18 @@ with the same intent; none are dropped silently.
 Sub-orbs work locally only (`wrangler dev`, local D1, Miniflare). Creating
 Cloudflare resources, deploying, DNS changes and cutover happen in the owner
 thread with the user's approval.
+
+## Cutover log (2026-10-12)
+
+- The old server hung again before cutover, so the drain was skipped with the
+  owner's approval: production was loaded from the 2026-10-12T04:05:23Z backup
+  (1,845 rows, verified counts and bytes), and pastes created or renewed on the
+  old server after that snapshot may be lost.
+- `code-tk` deployed with the `code.tk.sg` custom domain (version
+  30900e81-b219-4e0b-9baf-6ec31813fd01). Staging: `code-tk-staging` on
+  `code-staging.tk.sg`.
+- Rollback: remove the `code.tk.sg` custom domain from the Worker; the name falls
+  back to the `*.tk.sg` wildcard (old server).
+- Optional catch-up if the old box returns: keep its `haste` container stopped,
+  dump Redis db 2, and import with `scripts/rdb-to-d1` (upserts; safe at any time).
+- Backups: R2 bucket `code-tk-backups`, `redis-db/20261012T0405Z/`.

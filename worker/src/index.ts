@@ -44,12 +44,13 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     const file = decodeURIComponent(preview[1]);
     if (!read || !file.endsWith('.png')) return new Response(null, { status: 404 });
     const [key, ext] = file.slice(0, -4).split('.');
+    // Check the paste first so an expired or missing paste never shows a preview
+    const data = await store.get(key).catch(() => null);
+    if (!data) return new Response(null, { status: 404 });
     // Pastes never change, so a rendered preview can be reused from the edge cache
     const cacheKey = new Request(new URL('/preview/' + encodeURIComponent(file), url).toString());
     const cached = await edgeCache().match(cacheKey).catch(() => undefined);
     if (cached) return cached;
-    const data = await store.get(key).catch(() => null);
-    if (!data) return new Response(null, { status: 404 });
     try {
       const png = await renderPreviewPng(key, ext, data, request.headers.get('host') || url.host);
       const response = new Response(png as Uint8Array<ArrayBuffer>, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });

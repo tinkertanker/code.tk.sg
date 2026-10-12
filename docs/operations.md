@@ -76,11 +76,12 @@ check the older code still works with it before rolling back.
 - Rate limiting allows 250 requests per 30-minute window per client IP
   (`CF-Connecting-IP`; forwarded headers are never trusted), shared by all
   routes. Each IP has its own Durable Object, and its window starts at its first
-  request. If the limiter errors, requests are allowed through and the error is
+  request, and its storage is deleted once that window has passed. If the limiter errors, requests are allowed through and the error is
   logged ("Rate limiter failed"). For floods from many IPs, add a Cloudflare WAF
   rate-limiting rule in front of the Worker.
-- Preview images are cached in Cloudflare's edge cache for a day after the first
-  render, so an expired paste's preview can outlive it by up to a day.
+- Preview images are rendered once and then reused from Cloudflare's edge cache
+  (for up to a day). The paste is always checked first, so an expired paste's
+  preview stops being served when the paste does.
 - Expired pastes are deleted nightly in batches of 1,000 (up to 100,000 per run).
 - Saves are insert-only; an exhausted keyspace returns 503 instead of
   overwriting. Pastes are unlisted, not private: anyone with the URL can read one.

@@ -3,22 +3,37 @@ import type { Env } from './env';
 // One Durable Object per client IP holds that IP's fixed window, so no single
 // object serialises every request and a flood only queues on its own IPs.
 export class RateLimiter implements DurableObject {
-  constructor(private state: DurableObjectState) {
-    state.storage.sql.exec('CREATE TABLE IF NOT EXISTS rate_window (id INTEGER PRIMARY KEY, start INTEGER NOT NULL, hits INTEGER NOT NULL)');
+  constructor(private state: DurableObjectState) {}
+
+  // Recreated on demand: alarm() deletes all storage once a window has passed
+  private table() {
+    this.state.storage.sql.exec(`CREATE TABLE IF NOT EXISTS rate_window
+      (id INTEGER PRIMARY KEY, start INTEGER NOT NULL, hits INTEGER NOT NULL, window_ms INTEGER NOT NULL)`);
   }
 
   async fetch(request: Request): Promise<Response> {
     const { windowMs, max } = await request.json<{ windowMs: number; max: number }>();
+    this.table();
     const result = this.state.storage.transactionSync(() => {
       const sql = this.state.storage.sql;
       const now = Date.now();
       const row = sql.exec<{ start: number; hits: number }>('SELECT start, hits FROM rate_window WHERE id = 1').toArray()[0];
-      const start = row && now - row.start < windowMs ? row.start : now;
-      const hits = start === row?.start ? row.hits + 1 : 1;
-      sql.exec('INSERT OR REPLACE INTO rate_window VALUES (1, ?, ?)', start, hits);
-      return { hits, reset: start + windowMs, now };
+      const fresh = !row || now - row.start >= windowMs;
+      const start = fresh ? now : row.start;
+      const hits = fresh ? 1 : row.hits + 1;
+      sql.exec('INSERT OR REPLACE INTO rate_window VALUES (1, ?, ?, ?)', start, hits, windowMs);
+      return { hits, reset: start + windowMs, now, fresh };
     });
-    return Response.json({ ...result, max });
+    // Each new window schedules its own cleanup, so idle IPs leave no storage behind
+    if (result.fresh) await this.state.storage.setAlarm(result.reset);
+    return Response.json({ hits: result.hits, reset: result.reset, now: result.now, max });
+  }
+
+  async alarm(): Promise<void> {
+    this.table();
+    const row = this.state.storage.sql.exec<{ start: number; window_ms: number }>(
+      'SELECT start, window_ms FROM rate_window WHERE id = 1').toArray()[0];
+    if (!row || Date.now() >= row.start + row.window_ms) await this.state.storage.deleteAll();
   }
 }
 

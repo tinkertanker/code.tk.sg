@@ -26,11 +26,12 @@ post-deploy smoke test.
 (`scripts/smoke-test.sh`, which saves one small paste). Deploys run one at a
 time in the GitHub `production` environment.
 
-The job needs a `CLOUDFLARE_API_TOKEN` secret on that environment (repository
-Settings → Environments → production). Use a token scoped to the Tinkertanker
-account with **Workers Scripts: Edit**, **D1: Edit** and **Workers Routes: Edit**
-(zone `tk.sg`) only. Without it the job fails with a clear error and nothing is
-deployed.
+The job needs a `CLOUDFLARE_API_TOKEN` Actions secret (repository Settings →
+Secrets and variables → Actions, or on the `production` environment) holding a
+Cloudflare API token for the Tinkertanker account. Ideally scope it to
+**Workers Scripts: Edit**, **D1: Edit** and **Workers Routes: Edit** (zone
+`tk.sg`). Without it the job skips deploying with a warning, and production
+stays on its current version.
 
 To deploy by hand (for example to redeploy after a rollback), use a token with
 the same access (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only

@@ -117,13 +117,20 @@ class MigrationTest(unittest.TestCase):
                                   "FROM documents").fetchall()
                 if replay == 0:
                     self.assertEqual({k: (v, e) for k, v, e in rows}, expected)
-                    # Replays must preserve a document already renewed/changed by D1.
-                    db.execute("UPDATE documents SET data = 'newer', expires_at = 7 "
-                               "WHERE key = 'large'")
+                    # Replays never overwrite data. Expiry only extends: a later D1
+                    # renewal is kept, an earlier one is raised to the dump's value.
+                    large_expiry = expected[b"large"][1]
+                    db.execute("UPDATE documents SET data = 'newer', expires_at = ? "
+                               "WHERE key = 'large'", (large_expiry + 86400 * 365,))
+                    shortened = next(k for k, (_, e) in expected.items() if e is not None and k != b"large")
+                    db.execute("UPDATE documents SET expires_at = 7 WHERE CAST(key AS BLOB) = ?", (shortened,))
                 else:
                     self.assertEqual(len(rows), 4)
                     self.assertEqual(db.execute("SELECT data, expires_at FROM documents "
-                                                "WHERE key = 'large'").fetchone(), ("newer", 7))
+                                                "WHERE key = 'large'").fetchone(),
+                                     ("newer", large_expiry + 86400 * 365))
+                    self.assertEqual(db.execute("SELECT expires_at FROM documents WHERE CAST(key AS BLOB) = ?",
+                                                (shortened,)).fetchone()[0], expected[shortened][1])
             self.assertEqual(db.execute("SELECT count(*) FROM sqlite_schema "
                                         "WHERE name = '_rdb_to_d1_chunks'").fetchone()[0], 0)
             failed = subprocess.run([

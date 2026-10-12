@@ -148,17 +148,25 @@ def documents(redis, dump_time):
 def document_sql(key, value, expiry):
     key_sql = f"CAST(X'{key.hex()}' AS TEXT)"
     expiry_sql = "NULL" if expiry is None else str(expiry)
-    insert = "INSERT OR IGNORE INTO documents (key, data, expires_at) "
+    insert = "INSERT INTO documents (key, data, expires_at) "
+    # Documents are immutable, so an existing row keeps its data. Its expiry only
+    # ever extends: the later of the two, or NULL (never) if either is NULL. This
+    # carries over renewals made on the old server between dumps, and never
+    # shortens one made by the Worker. Replays are idempotent.
+    upsert = (" ON CONFLICT(key) DO UPDATE SET expires_at = CASE"
+              " WHEN documents.expires_at IS NULL OR excluded.expires_at IS NULL THEN NULL"
+              " ELSE MAX(documents.expires_at, excluded.expires_at) END")
     if len(value) <= CHUNK_BYTES:
-        return f"{insert}VALUES ({key_sql}, CAST(X'{value.hex()}' AS TEXT), {expiry_sql});\n"
+        return f"{insert}VALUES ({key_sql}, CAST(X'{value.hex()}' AS TEXT), {expiry_sql}){upsert};\n"
     # A single 400KB literal would exceed D1's statement limit. Assemble BLOB
     # chunks in order, then cast once to TEXT (UTF-8 may cross chunk boundaries).
     sql = [f"DELETE FROM {TABLE};\n"]
     for part, offset in enumerate(range(0, len(value), CHUNK_BYTES)):
         chunk = value[offset:offset + CHUNK_BYTES]
         sql.append(f"INSERT OR IGNORE INTO {TABLE} VALUES ({part}, X'{chunk.hex()}');\n")
+    # "WHERE true" lets SQLite parse ON CONFLICT after INSERT ... SELECT.
     sql.append(f"{insert}SELECT {key_sql}, CAST(group_concat(data, '') AS TEXT), {expiry_sql} "
-               f"FROM (SELECT data FROM {TABLE} ORDER BY part);\n")
+               f"FROM (SELECT data FROM {TABLE} ORDER BY part) WHERE true{upsert};\n")
     sql.append(f"DELETE FROM {TABLE};\n")
     return "".join(sql)
 

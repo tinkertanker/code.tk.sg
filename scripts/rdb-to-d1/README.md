@@ -45,10 +45,12 @@ Wrangler logs **outside the checkout**, and delete them after verification.
   A whole document stays in one file; too small a limit fails without publishing
   partial output. Import files **sequentially**, in filename order, and do not
   run simultaneous migrations against the same D1 database.
-- All document writes are `INSERT OR IGNORE`. Replaying files never overwrites
-  an existing document or its renewed TTL. The initial cutover import uses a
-  **fresh, empty `code-tk-prod`**, separate from staging. A second dump adds only
-  keys absent from production; it does not refresh existing rows or TTLs.
+- Document writes are upserts that never change content: a new key is
+  inserted; an existing key keeps its data and its `expires_at` only extends, to
+  the later of the two values (NULL, never expiring, wins). Replays are
+  idempotent, a renewal made by the Worker is never shortened, and a renewal
+  made on the old server between dumps is carried over. The initial cutover
+  import uses a **fresh, empty `code-tk-prod`**, separate from staging.
 
 ## Local rehearsal (no credentials/resources)
 
@@ -73,17 +75,19 @@ expiries, including the largest and non-ASCII pastes; counts alone are not proof
 
 ## Cutover commands (owner only, after deployment/import approval)
 
-Keep the old server running; do **not** freeze writes or TTL-renewing reads.
-The order is: full dump → import into empty `code-tk-prod` → switch DNS → second
-dump → insert-only delta import. For each completed snapshot, record its
-`LASTSAVE`/`ctime` and transfer it privately. Convert the first dump using the
-commands above. Confirm `code-tk-prod` is fresh, empty and separate from staging,
-and the Worker points to it. These commands are documentation only; phase 3 does
-not execute them.
+Order: full dump → import into empty `code-tk-prod` → attach the `code.tk.sg`
+custom domain → **drain** the old server → final dump → catch-up import.
+For each completed snapshot, record its `LASTSAVE`/`ctime` and transfer it
+privately. Confirm `code-tk-prod` is fresh, empty and separate from staging,
+and the Worker points to it.
 
-Keys are insert-only, so the second import adds pastes created between snapshots
-without overwriting production rows. Old-server TTL renewals in this window are
-not copied for existing keys; expiry shortened by minutes is an accepted tradeoff.
+The old server keeps serving until the drain, so it can still accept saves and
+renew expiries. The catch-up import picks up both: new keys are inserted and
+renewed expiries are extended. To drain, after attaching the custom domain wait
+at least 30 minutes (the `*.tk.sg` record TTL is 300 s; some resolvers hold
+longer) and watch the old server's request log until code.tk.sg traffic stops.
+Then stop only the old `haste` container (`docker compose stop haste`; Redis
+keeps running), so nothing else can write or renew, and take the final dump.
 
 ```sh
 cd worker
@@ -95,8 +99,8 @@ npx wrangler d1 execute code-tk-prod --remote --command \
   'SELECT COUNT(*) AS rows, SUM(expires_at IS NULL) AS without_ttl, MAX(LENGTH(CAST(data AS BLOB))) AS largest_bytes FROM documents'
 cd ..
 
-# Verify the first import, then switch DNS to the Worker (owner workflow).
-# After the switch, take/transfer a second dump to "$PRIVATE/delta.rdb".
+# Verify the first import, attach the code.tk.sg custom domain, drain and stop
+# the old haste container, then take/transfer the final dump to "$PRIVATE/delta.rdb".
 # Set DELTA_TIME to that second snapshot's LASTSAVE/ctime, not its transfer time.
 python3 scripts/rdb-to-d1/migrate.py "$PRIVATE/delta.rdb" \
   --dump-time "${DELTA_TIME:?Set the second snapshot timestamp}" --output "$PRIVATE/delta-sql"
@@ -111,8 +115,10 @@ rm -rf -- "$PRIVATE"
 
 If imports stop midway, rerun the ordered files; don't edit paste SQL by hand.
 Use the first dump's summary, not the rehearsal counts, to verify the full import.
-The second dump's total is not the delta count: existing keys are ignored, and
-production may also have received new pastes after the DNS switch.
+The final dump's total is not a delta count: existing keys are kept (only their
+expiry may extend), and production may also have received new pastes after the
+switch. Verify instead that every key in the final dump exists in `code-tk-prod`
+with an `expires_at` at least as late as the dump's.
 
 ## Regression verification
 

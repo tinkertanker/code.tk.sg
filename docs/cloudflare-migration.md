@@ -75,10 +75,16 @@ with the same intent; none are dropped silently.
 - Source: Redis db 2 (about 1,845 keys; largest about 320 KB). Db 0 belongs to
   another app and is not migrated.
 - `scripts/rdb-to-d1` loads a dump into a throwaway Redis, reads every db 2 key
-  with its TTL, and emits idempotent SQL (`INSERT OR IGNORE`) with
+  with its TTL, and emits idempotent upserts that never change content and only
+  extend expiry, with
   `expires_at = dump_time + ttl` (NULL when there is no TTL).
-- Run once for staging, then again from a fresh dump at cutover.
-
+- Run once for staging. At cutover: full dump → import into a fresh, empty
+  `code-tk-prod` → attach the `code.tk.sg` custom domain → drain (wait 30+
+  minutes, watch the old server's request log, then stop the old `haste`
+  container) → final dump → catch-up import, which adds new pastes and extends
+  expiries renewed on the old server. See `scripts/rdb-to-d1/README.md`.
+- Before cutover, prove live routing on staging: attach a staging custom
+  domain under the same `*.tk.sg` wildcard and confirm it reaches the Worker.
 ## Phases and owners
 
 1. **Core Worker** (sub-orb A): skeleton, D1 store, routes, uploads, keys,

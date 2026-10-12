@@ -1,0 +1,9 @@
+{
+  "name": "code-tk-preview-local",
+  "main": "preview.worker.ts",
+  "compatibility_date": "2026-10-12",
+  "rules": [
+    {"type": "Data", "globs": ["**/*.ttf", "**/*.png"], "fallthrough": true}
+  ],
+  "limits": {"cpu_ms": 30000}
+}

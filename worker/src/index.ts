@@ -45,7 +45,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     if (!data) return new Response(null, { status: 404 });
     try {
       const png = await renderPreviewPng(key, ext, data, request.headers.get('host') || url.host);
-      return new Response(png, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
+      return new Response(png as Uint8Array<ArrayBuffer>, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
     } catch (e) {
       console.error('Preview rendering failed', e);
       return new Response(null, { status: 500 });

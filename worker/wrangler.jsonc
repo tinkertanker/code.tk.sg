@@ -20,7 +20,10 @@
     "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }],
-  "rules": [{ "type": "Text", "globs": ["**/*.md"], "fallthrough": true }],
+  "rules": [
+    { "type": "Text", "globs": ["**/*.md"], "fallthrough": true },
+    { "type": "Data", "globs": ["**/*.ttf", "**/*.png"], "fallthrough": true }
+  ],
   "vars": {
     "KEY_LENGTH": 10,
     "MAX_LENGTH": 400000,

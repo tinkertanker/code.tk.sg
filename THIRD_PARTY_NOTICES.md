@@ -173,7 +173,7 @@ each with its licence in `OFL.txt` alongside:
 - IBM Plex Mono — Copyright 2017 IBM Corp.
 - JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
 - Fira Code — Copyright 2014-2020 The Fira Code Project Authors
-- Source Code Pro — Adobe; licence text as distributed by Google Fonts
+- Source Code Pro — © 2023 Adobe, with Reserved Font Name 'Source'
 
 ## Colour schemes
 

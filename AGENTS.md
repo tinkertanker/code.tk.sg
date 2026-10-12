@@ -17,8 +17,9 @@ Rust/Docker deployment on `dev.tk.sg` was retired on 2026-10-12. See
 
 ## Deploying
 
-- Merging to `main` deploys to production via CI (see `docs/operations.md`),
-  so merging needs the same approval as deploying. There is no staging
+- Merging to `main` runs the CI deploy job, which updates production whenever
+  the `CLOUDFLARE_API_TOKEN` secret is set (see `docs/operations.md`), so
+  merging needs the same approval as deploying. There is no staging
   environment; run the full test suites before merging.
 - Manual deploys require explicit user approval, per deploy. Deploy only `main`;
   see `docs/operations.md` for commands, post-deploy checks and rollback.

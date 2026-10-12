@@ -44,6 +44,7 @@ what is merged to `main`:
 git checkout main && git pull
 npm ci && npm run build
 cd worker && npm ci
+npx wrangler d1 migrations apply DB --remote
 npx wrangler deploy
 cd .. && scripts/smoke-test.sh https://code.tk.sg
 ```

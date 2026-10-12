@@ -7,8 +7,10 @@
 //   They look like spaces but break Python.
 // - Tab indentation mixed with space indentation (a classic Python error).
 //   Leading tabs become spaces at the paste's own indent width.
-// - A whole paste indented by an extra amount (copied from inside a block),
-//   unless it contains multiline strings, whose contents would change.
+// - A whole paste indented by an extra amount (copied from inside a block).
+//
+// Pastes containing multiline string delimiters (""", ''', backticks or <<-) are
+// left alone entirely: any of these fixes could change a string's contents.
 //
 // It never re-indents code structurally: guessing block levels needs a parser
 // per language, and a wrong guess silently changes what Python code does.
@@ -42,7 +44,8 @@
 
   // Removing shared indentation would also change multiline string contents
   function hasMultilineStrings(text) {
-    return /"""|'''|`/.test(text);
+    // <<- heredocs strip leading tabs, so converting tabs changes them too
+    return /"""|'''|`|<<-/.test(text);
   }
 
   // Smallest space indentation, clamped to 2-8; 4 when nothing indents with spaces
@@ -67,6 +70,9 @@
 
   function analyze(text, options) {
     var language = options && options.language;
+    // Any fix could change the contents of a multiline string, and telling
+    // string lines from code needs a real parser, so offer nothing at all.
+    if (hasMultilineStrings(String(text))) return null;
     var lines = String(text).split('\n');
     var issues = [];
     var changed = 0;
@@ -109,7 +115,7 @@
 
     // 3. Indentation shared by every non-blank line is removed
     var common = null;
-    if (!hasMultilineStrings(text)) lines.forEach(function(line) {
+    lines.forEach(function(line) {
       if (isBlank(line)) return;
       var lead = leading(line);
       if (common === null) common = lead;

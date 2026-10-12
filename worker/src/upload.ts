@@ -36,7 +36,8 @@ export async function upload(request: Request, limit: number): Promise<string> {
         const combined = new Uint8Array(preamble.length + chunk.length);
         combined.set(preamble); combined.set(chunk, preamble.length);
         let offset = -1;
-        for (let i = 0; i <= combined.length - opening.length - 2; i++) {
+        // Resume where the previous chunk's scan stopped (a boundary may straddle chunks)
+        for (let i = Math.max(0, preamble.length - opening.length - 3); i <= combined.length - opening.length - 2; i++) {
           if (i !== 0 && !(combined[i - 2] === 13 && combined[i - 1] === 10)) continue;
           const end = i + opening.length;
           if (!(combined[end] === 13 && combined[end + 1] === 10)

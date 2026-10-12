@@ -1,8 +1,9 @@
-# Core Cloudflare Worker (phase 1)
+# code.tk.sg Cloudflare Worker
 
-All commands here are local. No Cloudflare login, token, database creation or
-deployment is needed. The all-zero database ID is a local placeholder; the
-integration owner supplies the real ID before staging.
+This Worker serves production code.tk.sg (`code-tk`, D1 `code-tk-prod`) and
+staging code-staging.tk.sg (`code-tk-staging`, D1 `code-tk-staging`); see
+`wrangler.jsonc` and `docs/cloudflare-migration.md`. The commands below are
+local and need no Cloudflare credentials.
 
 From the repository root:
 
@@ -34,17 +35,11 @@ rows rather than a size-limited KV object. Only `CF-Connecting-IP` is used;
 requests without it share `unknown` for local development. Do not expose a
 non-Cloudflare proxy that lets clients spoof that header.
 
-## Preview integration
+## Tests
 
-`src/preview.ts` is the agreed placeholder. `injectMeta(indexHtml, {key, data,
-url, imageUrl})` provides escaped metadata; `renderPreviewPng(key, ext, data,
-host)` deliberately throws until phase 2 replaces it. Existing preview routes
-therefore return 500 for found documents, and 404 for missing documents or
-non-PNG URLs. No fake PNG is returned. After integration:
-
-```sh
-PREVIEW_INTEGRATION=1 npm --prefix worker test
-```
+`npm test` runs the Workers-pool suite (`vitest.config.ts`, including preview
+PNG compatibility tests) and then the Node preview suite
+(`test/preview.config.ts`), which uses Node's zlib and cannot run in workerd.
 
 The requested `@cloudflare/vitest-pool-workers` package is now deprecated.
 It is retained as requested; its pinned Wrangler/Miniflare dependencies are
@@ -59,19 +54,21 @@ Use a disposable local D1 database and these test-specific variables. In
 
 ```sh
 npm run db:init
-npx wrangler d1 execute code-tk --local --command "INSERT OR REPLACE INTO documents VALUES ('legacykey', 'old paste' || char(10) || 'é <&>' || char(10), NULL)"
-npm run dev -- --port 8787 --var MAX_LENGTH:32 --var EXPIRE:60 --var RATE_MAX:10000
+npx wrangler d1 execute DB --local --command "INSERT OR REPLACE INTO documents VALUES ('legacykey', 'old paste' || char(10) || 'é <&>' || char(10), NULL)"
+npm run dev:compat -- --port 8787 --var MAX_LENGTH:32 --var EXPIRE:60 --var RATE_MAX:10000
 ```
 
-In an orb, run the server as an `amp orb service`, not a detached shell process.
+`dev:compat` runs without the custom-domain routes: with them, `wrangler dev`
+rewrites every request's Host to that domain, which defeats the request-host
+tests. In an orb, run the server as an `amp orb service`, not a detached shell process.
 In another terminal from the repository root:
 
 ```sh
-WORKER_URL=http://127.0.0.1:8787 WORKER_SKIP_PREVIEW=1 python3 tests/compatibility.py
+WORKER_URL=http://127.0.0.1:8787 python3 tests/compatibility.py
 ```
 
-Omit `WORKER_SKIP_PREVIEW` after phase-2 integration. Worker mode accepts only
-loopback HTTP URLs; it never starts Rust/Redis or mutates file storage. The
+Set `WORKER_SKIP_PREVIEW=1` to skip the preview PNG test. Worker mode accepts only
+`http://127.0.0.1` URLs; it never starts Rust/Redis or mutates file storage. The
 Python mode exercises real HTTP, including unterminated chunked uploads.
 Storage/TTL, collisions and rate-variable variants are covered by Vitest, not
 by changing configuration of an already running server.

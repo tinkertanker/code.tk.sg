@@ -39,8 +39,8 @@ class Server(unittest.TestCase):
     def setUpClass(cls):
         if os.environ.get("WORKER_URL"):
             endpoint = urlsplit(os.environ["WORKER_URL"])
-            if endpoint.scheme != "http" or endpoint.hostname not in ("localhost", "127.0.0.1"):
-                raise RuntimeError("WORKER_URL must point to local HTTP wrangler dev")
+            if endpoint.scheme != "http" or endpoint.hostname != "127.0.0.1":
+                raise RuntimeError("WORKER_URL must be http://127.0.0.1:<port> (wrangler dev --ip 127.0.0.1)")
             cls.port = endpoint.port or 80
             cls.backend = "worker"
             cls.legacy_key = "legacykey"

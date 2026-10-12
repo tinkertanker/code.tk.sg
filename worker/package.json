@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --local",
+    "dev:compat": "grep -v '\"pattern\"' wrangler.jsonc > wrangler.compat.jsonc && wrangler dev -c wrangler.compat.jsonc --local --ip 127.0.0.1",
     "test": "vitest run && vitest run --config test/preview.config.ts",
     "test:preview": "vitest run --config test/preview.config.ts",
     "typecheck": "tsc --noEmit",

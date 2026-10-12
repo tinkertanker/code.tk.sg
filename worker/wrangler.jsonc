@@ -39,6 +39,7 @@
     "staging": {
       "name": "code-tk-staging",
       "workers_dev": true,
+      "triggers": { "crons": ["0 0 * * *"] },
       "routes": [{ "pattern": "code-staging.tk.sg", "custom_domain": true }],
       "d1_databases": [{
         "binding": "DB",

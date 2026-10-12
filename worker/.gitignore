@@ -1,2 +1,4 @@
 .wrangler/
 dist/
+.amp/
+wrangler.compat.jsonc

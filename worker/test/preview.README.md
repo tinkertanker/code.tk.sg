@@ -15,11 +15,10 @@ the caller, with Rust-compatible escaping.
 - Add the `Data` rules for `**/*.ttf` and `**/*.png` from
   `test/preview.wrangler.jsonc` to the production Wrangler config. Wrangler
   already recognizes the WASM import. Keep the test entry separate from the
-  production router; this PR does not add a production `wrangler.jsonc`.
+  production router. (Done: `worker/wrangler.jsonc` has these rules.)
 - Preview tests use a separate Node Vitest config that loads the same binary
-  inputs as the Worker. This scaffold uses Vitest 5.0.3. If the core Workers
-  pool requires another Vitest version, reconcile that dependency and rerun
-  both suites; do not fold this config into the Workers pool unchanged.
+  inputs as the Worker. Both suites now use Vitest 4.1.11, which
+  the Workers pool requires; this config stays separate from the Workers pool.
 - The router owns HTTP status/cache headers, `HEAD`, URL construction, and
   non-renewing preview reads. Preview responses must use `image/png` and
   `public, max-age=86400`; paste pages use `public, max-age=300`. Only document

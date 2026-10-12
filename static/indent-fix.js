@@ -7,7 +7,8 @@
 //   They look like spaces but break Python.
 // - Tab indentation mixed with space indentation (a classic Python error).
 //   Leading tabs become spaces at the paste's own indent width.
-// - A whole paste indented by an extra amount (copied from inside a block).
+// - A whole paste indented by an extra amount (copied from inside a block),
+//   unless it contains multiline strings, whose contents would change.
 //
 // It never re-indents code structurally: guessing block levels needs a parser
 // per language, and a wrong guess silently changes what Python code does.
@@ -20,7 +21,8 @@
 })(typeof window !== 'undefined' ? window : this, function() {
   'use strict';
 
-  var ODD_SPACE = /[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/g;
+  var ODD_SPACE = /[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g;
+  var HAS_ODD_SPACE = /[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]/;
   var LEADING = /^[ \t\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]*/;
   // Makefiles require tab-indented recipes; Go uses tabs plus alignment spaces.
   var KEEP_TABS = ['makefile', 'go'];
@@ -33,8 +35,14 @@
     return line.replace(/\r$/, '') === leading(line);
   }
 
+  // A target line followed (after any comment or blank lines) by a tab-indented recipe
   function looksLikeMakefile(text) {
-    return /^[\w.%$()/-]+\s*:[^=\n]*\n\t/m.test(text);
+    return /^[\w.%$()/-]+\s*:[^=\n]*\n(?:[ \t]*(?:#[^\n]*)?\n)*\t/m.test(text);
+  }
+
+  // Removing shared indentation would also change multiline string contents
+  function hasMultilineStrings(text) {
+    return /"""|'''|`/.test(text);
   }
 
   // Smallest space indentation, clamped to 2-8; 4 when nothing indents with spaces
@@ -66,12 +74,11 @@
     // 1. Unicode spaces in indentation become ordinary spaces
     lines = lines.map(function(line) {
       var lead = leading(line);
-      if (!ODD_SPACE.test(lead)) return line;
-      ODD_SPACE.lastIndex = 0;
+      if (!HAS_ODD_SPACE.test(lead)) return line;
       changed++;
-      return lead.replace(ODD_SPACE, ' ') + line.slice(lead.length);
+      // The zero-width BOM (U+FEFF) is dropped; other Unicode spaces become a space
+      return lead.replace(/\ufeff/g, '').replace(ODD_SPACE, ' ') + line.slice(lead.length);
     });
-    ODD_SPACE.lastIndex = 0;
     if (changed) {
       issues.push({ type: 'fake-spaces', lines: changed,
         message: 'Replace invisible non-breaking spaces (' + plural(changed, 'line') + ')' });
@@ -102,7 +109,7 @@
 
     // 3. Indentation shared by every non-blank line is removed
     var common = null;
-    lines.forEach(function(line) {
+    if (!hasMultilineStrings(text)) lines.forEach(function(line) {
       if (isBlank(line)) return;
       var lead = leading(line);
       if (common === null) common = lead;

@@ -95,6 +95,11 @@
   --ui-control: #2a2b24;
   --ui-control-hover: #45443a;
   --ui-select: #2a2b24;
+  --ui-fg: #f8f8f2;
+  --ui-active: #4a2a32;
+  --ui-muted: #a59f85;
+  --ui-subtle: #cfcfc2;
+  --ui-disabled: #75715e;
   color-scheme: dark;
 }
 
@@ -123,6 +128,11 @@
   --ui-control: #161b22;
   --ui-control-hover: #30363d;
   --ui-select: #161b22;
+  --ui-fg: #e6edf3;
+  --ui-active: #3d1d1f;
+  --ui-muted: #9198a1;
+  --ui-subtle: #b7bdc8;
+  --ui-disabled: #656c76;
   color-scheme: dark;
 }
 

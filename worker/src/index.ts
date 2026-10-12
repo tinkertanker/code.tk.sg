@@ -81,7 +81,11 @@ async function route(request: Request, env: Env): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const rate = await rateLimit(request, env);
+    // A limiter failure must not take the site down: fail open and log it
+    const rate = await rateLimit(request, env).catch((e) => {
+      console.error('Rate limiter failed', e);
+      return { limited: false, headers: new Headers() };
+    });
     let response: Response;
     if (rate.limited) response = new Response('Too many requests, please try again later.', { status: 429 });
     else {

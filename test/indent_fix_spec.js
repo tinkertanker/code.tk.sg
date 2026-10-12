@@ -55,4 +55,17 @@ describe('indentation fixing', function(){
 		strictEqual(result.fixed, 'a\r\n  b\r\n');
 		strictEqual(analyze(result.fixed), null);
 	});
+
+	it('treats a Makefile with comments before a recipe as a Makefile', function(){
+		strictEqual(analyze('all:\n# note\n\t@echo ok\n  # note\n'), null);
+	});
+
+	it('never removes indentation inside multiline strings', function(){
+		strictEqual(analyze('  const value = `\n  text\n  `;\n'), null);
+		strictEqual(analyze('    s = """\n    body\n    """\n'), null);
+	});
+
+	it('drops a zero-width BOM from indentation', function(){
+		strictEqual(analyze('x:\n\ufeff    y\n').fixed, 'x:\n    y\n');
+	});
 });

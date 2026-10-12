@@ -1,0 +1,19 @@
+{
+  "name": "code-tk-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:preview": "vitest run --config test/preview.config.ts"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2",
+    "highlight.js": "11.12.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
+  }
+}

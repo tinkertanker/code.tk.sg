@@ -46,8 +46,9 @@ Wrangler logs **outside the checkout**, and delete them after verification.
   partial output. Import files **sequentially**, in filename order, and do not
   run simultaneous migrations against the same D1 database.
 - All document writes are `INSERT OR IGNORE`. Replaying files never overwrites
-  an existing document or its renewed TTL. Consequently, a fresh cutover dump
-  needs a **clean target**, not a database still containing stale staging rows.
+  an existing document or its renewed TTL. The initial cutover import uses a
+  **fresh, empty `code-tk-prod`**, separate from staging. A second dump adds only
+  keys absent from production; it does not refresh existing rows or TTLs.
 
 ## Local rehearsal (no credentials/resources)
 
@@ -72,27 +73,46 @@ expiries, including the largest and non-ASCII pastes; counts alone are not proof
 
 ## Cutover commands (owner only, after deployment/import approval)
 
-Stop source writes **and document reads that renew TTLs**, take a fresh completed
-RDB snapshot, record its `LASTSAVE`, transfer it privately, and run the converter
-above with that timestamp. Check the target is clean and the Worker config points
-to the approved target/environment before running these commands. These commands
-are documentation only; phase 3 does not execute them.
+Keep the old server running; do **not** freeze writes or TTL-renewing reads.
+The order is: full dump → import into empty `code-tk-prod` → switch DNS → second
+dump → insert-only delta import. For each completed snapshot, record its
+`LASTSAVE`/`ctime` and transfer it privately. Convert the first dump using the
+commands above. Confirm `code-tk-prod` is fresh, empty and separate from staging,
+and the Worker points to it. These commands are documentation only; phase 3 does
+not execute them.
+
+Keys are insert-only, so the second import adds pastes created between snapshots
+without overwriting production rows. Old-server TTL renewals in this window are
+not copied for existing keys; expiry shortened by minutes is an accepted tradeoff.
 
 ```sh
 cd worker
-npx wrangler d1 execute DB --remote --file migrations/0001_init.sql
+npx wrangler d1 execute code-tk-prod --remote --file migrations/0001_init.sql
 for file in "$PRIVATE"/sql/*.sql; do
-  npx wrangler d1 execute DB --remote --file "$file" || exit 1
+  npx wrangler d1 execute code-tk-prod --remote --file "$file" || exit 1
 done
-npx wrangler d1 execute DB --remote --command \
+npx wrangler d1 execute code-tk-prod --remote --command \
   'SELECT COUNT(*) AS rows, SUM(expires_at IS NULL) AS without_ttl, MAX(LENGTH(CAST(data AS BLOB))) AS largest_bytes FROM documents'
 cd ..
-# After byte/expiry verification and route cutover, remove every private copy:
+
+# Verify the first import, then switch DNS to the Worker (owner workflow).
+# After the switch, take/transfer a second dump to "$PRIVATE/delta.rdb".
+# Set DELTA_TIME to that second snapshot's LASTSAVE/ctime, not its transfer time.
+python3 scripts/rdb-to-d1/migrate.py "$PRIVATE/delta.rdb" \
+  --dump-time "${DELTA_TIME:?Set the second snapshot timestamp}" --output "$PRIVATE/delta-sql"
+cd worker
+for file in "$PRIVATE"/delta-sql/*.sql; do
+  npx wrangler d1 execute code-tk-prod --remote --file "$file" || exit 1
+done
+cd ..
+# After delta verification, remove every private copy:
 rm -rf -- "$PRIVATE"
 ```
 
 If imports stop midway, rerun the ordered files; don't edit paste SQL by hand.
-Use the fresh dump's summary, not the rehearsal counts, at cutover.
+Use the first dump's summary, not the rehearsal counts, to verify the full import.
+The second dump's total is not the delta count: existing keys are ignored, and
+production may also have received new pastes after the DNS switch.
 
 ## Regression verification
 

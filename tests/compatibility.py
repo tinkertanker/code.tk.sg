@@ -2,6 +2,9 @@
 
 Run after cargo build: python3 tests/compatibility.py
 Requires redis-server and redis-cli. Never connects to production Redis.
+
+For local wrangler dev, see worker/README.md and set WORKER_URL. This mode
+runs HTTP contracts only; D1/expiry/rate/collision contracts live in Vitest.
 """
 import hashlib
 import http.client
@@ -16,6 +19,7 @@ import tempfile
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -33,6 +37,15 @@ class Server(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        if os.environ.get("WORKER_URL"):
+            endpoint = urlsplit(os.environ["WORKER_URL"])
+            if endpoint.scheme != "http" or endpoint.hostname not in ("localhost", "127.0.0.1"):
+                raise RuntimeError("WORKER_URL must point to local HTTP wrangler dev")
+            cls.port = endpoint.port or 80
+            cls.backend = "worker"
+            cls.legacy_key = "legacykey"
+            cls.legacy_data = "old paste\né <&>\n"
+            return
         cls.temp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temp.cleanup)
         cls.work = Path(cls.temp.name)
@@ -154,7 +167,7 @@ class FileContracts(Server):
         self.assertEqual(self.request("/raw/" + key)[2].decode(), value)
         if self.backend == "file":
             self.assertEqual((self.work / "data" / hashlib.md5(key.encode()).hexdigest()).read_text(), value)
-        else:
+        elif self.backend == "redis":
             self.assertEqual(self.redis("GET", key).rstrip("\n"), value)
             self.assertGreater(int(self.redis("TTL", key)), 55)
         for data, expected, message in [
@@ -288,8 +301,13 @@ class FileContracts(Server):
         status, headers, body = self.request("/legacykey.py")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Cache-Control"], "public, max-age=300")
-        self.assertIn(b'content="https://code.tk.sg/preview/legacykey.py.png"', body)
+        origin = (os.environ["WORKER_URL"].rstrip("/") if self.backend == "worker" else "https://code.tk.sg")
+        self.assertIn(f'content="{origin}/preview/legacykey.py.png"'.encode(), body)
         self.assertIn('content="old paste é &lt;&amp;&gt;"'.encode(), body)
+
+    @unittest.skipIf(os.environ.get("WORKER_URL") and os.environ.get("WORKER_SKIP_PREVIEW") == "1",
+                     "Phase-1 Worker preview stub; PNG requires phase-2 integration")
+    def test_preview_png(self):
         for suffix in [".py", ".txt", ".unknown", ""]:
             status, headers, png = self.request("/preview/legacykey" + suffix + ".png")
             self.assertEqual(status, 200)
@@ -400,4 +418,14 @@ class ImplicitTypeContracts(Server):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    if os.environ.get("WORKER_URL"):
+        # Never run legacy storage mutations or launch Rust/Redis in Worker mode.
+        result = unittest.TextTestRunner(verbosity=2).run(
+            unittest.TestSuite([
+                unittest.defaultTestLoader.loadTestsFromTestCase(FileContracts),
+                unittest.defaultTestLoader.loadTestsFromTestCase(HostOriginContracts),
+            ])
+        )
+        raise SystemExit(not result.wasSuccessful())
+    else:
+        unittest.main(verbosity=2)

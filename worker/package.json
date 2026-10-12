@@ -1,0 +1,28 @@
+{
+  "name": "code-tk-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "db:init": "wrangler d1 migrations apply code-tk --local"
+  },
+  "dependencies": {
+    "@mjackson/multipart-parser": "0.10.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.23.0",
+    "@cloudflare/workers-types": "5.20261012.1",
+    "typescript": "^5.9.3",
+    "vitest": "4.1.11",
+    "wrangler": "^4.149.0"
+  },
+  "overrides": {
+    "@cloudflare/vitest-pool-workers": {
+      "miniflare": "5.20261006.1-alpha",
+      "wrangler": "$wrangler"
+    }
+  }
+}

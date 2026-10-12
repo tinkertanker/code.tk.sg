@@ -1,4 +1,4 @@
-/* global $, hljs, hasteLanguageDetect, hasteFonts, hasteThemes, qrcode, window, document */
+/* global $, hljs, hasteLanguageDetect, hasteIndentFix, hasteFonts, hasteThemes, qrcode, window, document */
 
 ///// represents a single document
 
@@ -121,12 +121,12 @@ haste.prototype.showMessage = function(msg, cls) {
 
 // Show the light key
 haste.prototype.lightKey = function() {
-  this.configureKey(['save', 'new', 'more']);
+  this.configureKey(['save', 'new', 'fix-indent', 'more']);
 };
 
 // Show the full key
 haste.prototype.fullKey = function() {
-  this.configureKey(['copy', 'share', 'duplicate', 'new', 'more']);
+  this.configureKey(['copy', 'share', 'duplicate', 'new', 'fix-indent', 'more']);
   // Downloads keep the extension in the address bar so the file opens in the right editor
   var file = window.location.pathname.slice(1);
   if (file.indexOf('.') === -1) file += '.txt';
@@ -172,6 +172,7 @@ haste.prototype.newDocument = function(hideHistory) {
     this.focus();
   });
   this.removeLineNumbers();
+  this.checkIndentation();
 };
 
 // Map of common extensions
@@ -377,6 +378,8 @@ haste.prototype.loadDocument = function(key) {
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
       _this.renderLines(ret.value);
+      _this.doc.language = ret.language;
+      _this.checkIndentation();
     }
     else {
       _this.newDocument();
@@ -390,6 +393,7 @@ haste.prototype.duplicateDocument = function() {
     var currentData = this.doc.data;
     this.newDocument();
     this.$textarea.val(currentData);
+    this.checkIndentation();
   }
 };
 
@@ -412,8 +416,46 @@ haste.prototype.lockDocument = function() {
       _this.$textarea.val('').hide();
       _this.$box.show().focus();
       _this.renderLines(ret.value);
+      _this.doc.language = ret.language;
+      _this.checkIndentation();
     }
   });
+};
+
+// Show "Fix indentation" only when the paste has a safe, mechanical fix
+haste.prototype.checkIndentation = function() {
+  var text = this.doc.locked ? this.doc.data : this.$textarea.val();
+  this.indentFix = hasteIndentFix.analyze(text || '', { language: this.doc.language });
+  var $button = $('#box2 .fix-indent').prop('hidden', !this.indentFix);
+  if (this.indentFixButton) {
+    this.indentFixButton.shortcutDescription = this.indentFix ?
+      this.indentFix.issues.map(function(issue) { return issue.message; }).join('; ') : '';
+  }
+  if (!this.indentFix && $button.is(':focus')) $('#box3').hide();
+  this.fitKeySpacer();
+};
+
+// Fix in place while editing (undoable); open a fixed copy of a saved paste
+haste.prototype.fixIndentation = function() {
+  if (!this.indentFix) return;
+  var fixed = this.indentFix.fixed;
+  if (this.doc.locked) {
+    this.newDocument();
+    this.$textarea.val(fixed);
+    this.setDirty(true);
+    this.showMessage('Opened a copy with fixed indentation. Save to share it.');
+  } else {
+    var textarea = this.$textarea[0];
+    textarea.focus();
+    textarea.select();
+    // insertText keeps the browser's undo history; fall back to a plain replace
+    if (!document.execCommand || !document.execCommand('insertText', false, fixed)) {
+      this.$textarea.val(fixed);
+    }
+    this.setDirty(true);
+    this.showMessage('Fixed indentation. Press Ctrl+Z to undo.');
+  }
+  this.checkIndentation();
 };
 
 haste.prototype.configureButtons = function() {
@@ -472,6 +514,14 @@ haste.prototype.configureButtons = function() {
         _this.toggleShare();
       }
     },
+    this.indentFixButton = {
+      $where: $('#box2 .fix-indent'),
+      label: 'Fix indentation',
+      shortcutDescription: '',
+      action: function() {
+        _this.fixIndentation();
+      }
+    },
     {
       $where: $('#box2 .more'),
       label: 'More options',
@@ -484,8 +534,11 @@ haste.prototype.configureButtons = function() {
   for (var i = 0; i < this.buttons.length; i++) {
     this.configureButton(this.buttons[i]);
   }
+  var indentTimer;
   this.$textarea.on('input', function() {
     _this.setDirty(true);
+    clearTimeout(indentTimer);
+    indentTimer = setTimeout(function() { _this.checkIndentation(); }, 300);
   });
 };
 

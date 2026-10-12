@@ -2,7 +2,7 @@ name: Rust compatibility and runtime
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, cloudflare-rewrite]
   push:
     branches: [main]
 
@@ -37,3 +37,19 @@ jobs:
           done
           docker exec code-tk-smoke code-tk --healthcheck
           docker exec code-tk-smoke sh -c 'test "$(id -u)" = 1001 && ! command -v node && ! command -v cargo'
+
+  worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Build static assets
+        run: npm ci && npm run build
+      - name: Worker typecheck, tests and bundle
+        working-directory: worker
+        run: npm ci && npm run typecheck && npm test && npm run build

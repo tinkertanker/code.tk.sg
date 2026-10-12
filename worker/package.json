@@ -1,0 +1,34 @@
+{
+  "name": "code-tk-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "dev:compat": "grep -v '\"pattern\"' wrangler.jsonc > wrangler.compat.jsonc && wrangler dev -c wrangler.compat.jsonc --local --ip 127.0.0.1",
+    "test": "vitest run && vitest run --config test/preview.config.ts",
+    "test:preview": "vitest run --config test/preview.config.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "db:init": "wrangler d1 migrations apply DB --local"
+  },
+  "dependencies": {
+    "@mjackson/multipart-parser": "0.10.1",
+    "@resvg/resvg-wasm": "2.6.2",
+    "highlight.js": "11.12.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.23.0",
+    "@cloudflare/workers-types": "5.20261012.1",
+    "@types/pngjs": "^6.0.5",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "4.1.11",
+    "wrangler": "^4.149.0"
+  },
+  "overrides": {
+    "@cloudflare/vitest-pool-workers": {
+      "miniflare": "5.20261006.1-alpha",
+      "wrangler": "$wrangler"
+    }
+  }
+}

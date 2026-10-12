@@ -10,6 +10,14 @@
 @font-face {
 	font-family: "IBM Plex Mono";
 	font-style: normal;
+	font-weight: 500;
+	font-display: swap;
+	src: url(fonts/ibm-plex-mono/ibm-plex-mono-latin-500-normal.woff2) format("woff2");
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: "IBM Plex Mono";
+	font-style: normal;
 	font-weight: 700;
 	font-display: swap;
 	src: url(fonts/ibm-plex-mono/ibm-plex-mono-latin-700-normal.woff2) format("woff2");
@@ -85,6 +93,7 @@ textarea, #linenos, #box {
 /* textarea */
 
 textarea {
+	font-weight: 500; /* Plex Regular reads too faint */
 	background: transparent;
 	border: 0px;
 	color: var(--text);
@@ -121,6 +130,7 @@ textarea {
 	border: 0px;
 	outline: none;
 	font-family: var(--code-font);
+	font-weight: 500; /* Plex Regular reads too faint */
 	font-size: var(--code-size);
   overflow: inherit;
 }
@@ -175,12 +185,12 @@ body.key-overlay #box .key-spacer {
 	right: 16px;
 	z-index: 1000;
 	min-width: 260px;
-	background: #141518;
-	border: 1px solid #32353b;
+	background: var(--ui-bg);
+	border: 1px solid var(--ui-border);
 	border-radius: 10px;
-	color: #eeeeef;
+	color: var(--ui-fg);
 	font-family: Helvetica, Arial, sans-serif;
-	box-shadow: 0 8px 24px #0005;
+	box-shadow: 0 8px 24px var(--ui-shadow);
 }
 
 #box1 {
@@ -189,7 +199,7 @@ body.key-overlay #box .key-spacer {
 	justify-content: space-between;
 	gap: 4px;
 	padding: 11px 13px;
-	border-bottom: 1px solid #303238;
+	border-bottom: 1px solid var(--ui-divider);
 }
 
 #box2 {
@@ -201,7 +211,7 @@ body.key-overlay #box .key-spacer {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	color: #f2f2f3;
+	color: var(--ui-fg);
 	font-size: 22px;
 	text-decoration: none;
 }
@@ -226,7 +236,7 @@ body.key-overlay #box .key-spacer {
 	background: transparent;
 	border: 0;
 	border-radius: 7px;
-	color: #e7e8eb;
+	color: var(--ui-fg);
 }
 
 /* buttons that don't apply right now are hidden rather than greyed out */
@@ -280,6 +290,8 @@ body.key-overlay #box .key-spacer {
 .duplicate { --icon: url(icons/copy-plus.svg); }
 .copy { --icon: url(icons/copy.svg); }
 .more { --icon: url(icons/ellipsis.svg); }
+.fix-indent { --icon: url(icons/indent.svg); }
+#box2 .fix-indent[hidden] { display: none; }
 #raw-link { --icon: url(icons/file-text.svg); }
 #download-link { --icon: url(icons/download.svg); }
 .github { --icon: url(icons/github.svg); }
@@ -293,7 +305,7 @@ body.key-overlay #box .key-spacer {
 	top: -3px;
 	width: 8px;
 	height: 8px;
-	border: 2px solid #141518;
+	border: 2px solid var(--ui-bg);
 	border-radius: 50%;
 	background: #fff;
 }
@@ -303,13 +315,13 @@ body.key-overlay #box .key-spacer {
 }
 
 #box2 .function.enabled:hover, #share-panel button:hover {
-	background: #292c32;
+	background: var(--ui-hover);
 }
 
 #box2 .share:hover:not(:disabled), #box2 .share[aria-expanded="true"],
 #box2 .more[aria-expanded="true"] {
 	color: #f3777d;
-	background: #302024;
+	background: var(--ui-active);
 }
 
 #key :focus-visible {
@@ -321,10 +333,10 @@ body.key-overlay #box .key-spacer {
 	position: absolute;
 	top: calc(100% + 12px);
 	right: 0;
-	background: #191b1f;
-	border: 1px solid #3b3f47;
+	background: var(--ui-panel);
+	border: 1px solid var(--ui-panel-border);
 	border-radius: 9px;
-	box-shadow: 0 10px 30px #0006;
+	box-shadow: 0 10px 30px var(--ui-panel-shadow);
 }
 
 #box3 {
@@ -335,7 +347,7 @@ body.key-overlay #box .key-spacer {
 }
 
 #box3 .shortcut {
-	color: #a3a7b0;
+	color: var(--ui-muted);
 	font-size: 11px;
 }
 
@@ -352,9 +364,9 @@ body.key-overlay #box .key-spacer {
 
 #share-url, #share-panel button {
 	box-sizing: border-box;
-	border: 1px solid #42464f;
-	background: #111316;
-	color: #e7e8eb;
+	border: 1px solid var(--ui-control-border);
+	background: var(--ui-input);
+	color: var(--ui-fg);
 	font: inherit;
 	font-size: 14px;
 	padding: 12px;
@@ -382,7 +394,7 @@ body.key-overlay #box .key-spacer {
 	flex: 0 0 44px;
 	border-left: 0;
 	border-radius: 0;
-	background: #25282e;
+	background: var(--ui-control);
 }
 
 #share-panel button:last-child {
@@ -393,7 +405,7 @@ body.key-overlay #box .key-spacer {
 
 #show-qr[aria-expanded="true"] {
 	color: #f3777d;
-	background: #302024;
+	background: var(--ui-active);
 }
 
 #share-qr {
@@ -439,47 +451,47 @@ body.key-overlay #box .key-spacer {
 }
 
 #more-panel label.menu-row:hover, #more-panel .menu-links a:hover {
-	background: #292c32;
+	background: var(--ui-hover);
 }
 
 .menu-links {
 	margin-top: 6px;
 	padding-top: 6px;
-	border-top: 1px solid #303238;
+	border-top: 1px solid var(--ui-divider);
 }
 
 #more-panel .menu-links a, #more-panel .menu-links a:visited {
-	color: #e7e8eb;
+	color: var(--ui-fg);
 	text-decoration: none;
 }
 
 .menu-links .icon {
 	width: 18px;
 	height: 18px;
-	color: #a3a7b0;
+	color: var(--ui-muted);
 }
 
 #more-panel select {
 	width: 150px;
 	height: 34px;
 	padding: 0 28px 0 10px;
-	border: 1px solid #42464f;
+	border: 1px solid var(--ui-control-border);
 	border-radius: 6px;
-	background: #24262b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a3a7b0' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
-	color: #e7e8eb;
+	background: var(--ui-select) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a3a7b0' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;
+	color: var(--ui-fg);
 	font: inherit;
 	appearance: none;
 	cursor: pointer;
 }
 
 #more-panel select:hover {
-	border-color: #5a5f6a;
+	border-color: var(--ui-control-border-hover);
 }
 
 .stepper {
 	display: flex;
 	align-items: center;
-	border: 1px solid #42464f;
+	border: 1px solid var(--ui-control-border);
 	border-radius: 6px;
 	overflow: hidden;
 }
@@ -489,25 +501,25 @@ body.key-overlay #box .key-spacer {
 	height: 32px;
 	padding: 0;
 	border: 0;
-	background: #25282e;
-	color: #e7e8eb;
+	background: var(--ui-control);
+	color: var(--ui-fg);
 	font: inherit;
 	font-weight: bold;
 }
 
 .stepper button:hover:not(:disabled) {
-	background: #33363d;
+	background: var(--ui-control-hover);
 }
 
 .stepper button:disabled {
-	color: #62666e;
+	color: var(--ui-disabled);
 }
 
 #text-size {
 	min-width: 48px;
 	text-align: center;
 	font-variant-numeric: tabular-nums;
-	color: #c1c5cd;
+	color: var(--ui-subtle);
 }
 
 /* checkbox drawn as a switch */
@@ -519,7 +531,7 @@ body.key-overlay #box .key-spacer {
 	height: 20px;
 	margin: 0;
 	border-radius: 10px;
-	background: #42464f;
+	background: var(--ui-control-border);
 	cursor: pointer;
 	transition: background 0.15s;
 }
@@ -532,7 +544,8 @@ body.key-overlay #box .key-spacer {
 	width: 14px;
 	height: 14px;
 	border-radius: 50%;
-	background: #e7e8eb;
+	background: #fff;
+	box-shadow: 0 1px 2px #0003;
 	transition: transform 0.15s;
 }
 
@@ -547,7 +560,7 @@ body.key-overlay #box .key-spacer {
 #share-status {
 	font-size: 13px;
 	line-height: 1.5;
-	color: #c1c5cd;
+	color: var(--ui-subtle);
 	margin: 12px 13px 0;
 }
 

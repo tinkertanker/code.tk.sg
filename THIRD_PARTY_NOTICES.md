@@ -115,7 +115,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ## DejaVu Sans Mono — Bitstream Vera licence
 
-Applies to `lib/fonts/DejaVuSansMono.ttf`, used unmodified to render link
+Applies to `lib/fonts/DejaVuSansMono.ttf` and `lib/fonts/DejaVuSansMono-Bold.ttf` (the latter from DejaVu 2.37), used unmodified to render link
 preview images. Source: <https://dejavu-fonts.github.io/>.
 
 ```text

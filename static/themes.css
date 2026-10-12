@@ -1,5 +1,5 @@
 /*
- * Code colour schemes for highlight.js, chosen from the More menu.
+ * Colour schemes for code (highlight.js) and the toolbar, chosen from the More menu.
  * Solarized: original style from ethanschoonover.com/solarized (c) Jeremy Hull
  * <sourdrums@gmail.com>. Monokai and GitHub palettes follow their published
  * colours. See THIRD_PARTY_NOTICES.md.
@@ -18,6 +18,26 @@
   --hl-meta: #cb4b16;
   --hl-builtin: #dc322f;
   --hl-formula-bg: #073642;
+  /* toolbar and panels */
+  --ui-bg: #141518;
+  --ui-border: #3a3d44;
+  --ui-fg: #eeeeef;
+  --ui-divider: #303238;
+  --ui-hover: #292c32;
+  --ui-active: #302024;
+  --ui-muted: #a3a7b0;
+  --ui-subtle: #c1c5cd;
+  --ui-disabled: #62666e;
+  --ui-panel: #191b1f;
+  --ui-panel-border: #454951;
+  --ui-control-border: #42464f;
+  --ui-control-border-hover: #5a5f6a;
+  --ui-input: #111316;
+  --ui-control: #25282e;
+  --ui-control-hover: #33363d;
+  --ui-select: #24262b;
+  --ui-shadow: #0005;
+  --ui-panel-shadow: #0006;
   color-scheme: dark;
 }
 
@@ -28,6 +48,25 @@
   --hl-fg: #657b83;
   --hl-comment: #93a1a1;
   --hl-formula-bg: #eee8d5;
+  --ui-bg: #e8e1cb;
+  --ui-border: #c9c1aa;
+  --ui-fg: #073642;
+  --ui-divider: #d6cfb9;
+  --ui-hover: #ddd6c1;
+  --ui-active: #f6dcd2;
+  --ui-muted: #657b83;
+  --ui-subtle: #586e75;
+  --ui-disabled: #a3aca9;
+  --ui-panel: #eee8d5;
+  --ui-panel-border: #c9c1aa;
+  --ui-control-border: #c9c1aa;
+  --ui-control-border-hover: #93a1a1;
+  --ui-input: #fdf6e3;
+  --ui-control: #fdf6e3;
+  --ui-control-hover: #e4ddc8;
+  --ui-select: #fdf6e3;
+  --ui-shadow: #00000033;
+  --ui-panel-shadow: #0000003d;
   color-scheme: light;
 }
 
@@ -44,6 +83,23 @@
   --hl-meta: #fd971f;
   --hl-builtin: #ae81ff;
   --hl-formula-bg: #3e3d32;
+  --ui-bg: #33342c;
+  --ui-border: #4e4d43;
+  --ui-divider: #45443a;
+  --ui-hover: #45443a;
+  --ui-panel: #383930;
+  --ui-panel-border: #57564b;
+  --ui-control-border: #57564b;
+  --ui-control-border-hover: #75715e;
+  --ui-input: #272822;
+  --ui-control: #2a2b24;
+  --ui-control-hover: #45443a;
+  --ui-select: #2a2b24;
+  --ui-fg: #f8f8f2;
+  --ui-active: #4a2a32;
+  --ui-muted: #a59f85;
+  --ui-subtle: #cfcfc2;
+  --ui-disabled: #75715e;
   color-scheme: dark;
 }
 
@@ -60,6 +116,23 @@
   --hl-meta: #ffa657;
   --hl-builtin: #ffa657;
   --hl-formula-bg: #161b22;
+  --ui-bg: #21262d;
+  --ui-border: #3d444d;
+  --ui-divider: #30363d;
+  --ui-hover: #30363d;
+  --ui-panel: #262c36;
+  --ui-panel-border: #3d444d;
+  --ui-control-border: #3d444d;
+  --ui-control-border-hover: #656c76;
+  --ui-input: #0d1117;
+  --ui-control: #161b22;
+  --ui-control-hover: #30363d;
+  --ui-select: #161b22;
+  --ui-fg: #e6edf3;
+  --ui-active: #3d1d1f;
+  --ui-muted: #9198a1;
+  --ui-subtle: #b7bdc8;
+  --ui-disabled: #656c76;
   color-scheme: dark;
 }
 
@@ -76,6 +149,25 @@
   --hl-meta: #953800;
   --hl-builtin: #953800;
   --hl-formula-bg: #f6f8fa;
+  --ui-bg: #f0f3f6;
+  --ui-border: #c3cbd3;
+  --ui-fg: #1f2328;
+  --ui-divider: #d0d7de;
+  --ui-hover: #e3e8ed;
+  --ui-active: #ffe4e2;
+  --ui-muted: #59636e;
+  --ui-subtle: #424a53;
+  --ui-disabled: #a0a7ae;
+  --ui-panel: #f6f8fa;
+  --ui-panel-border: #c3cbd3;
+  --ui-control-border: #c8ced5;
+  --ui-control-border-hover: #8c959f;
+  --ui-input: #ffffff;
+  --ui-control: #ffffff;
+  --ui-control-hover: #eaeef2;
+  --ui-select: #ffffff;
+  --ui-shadow: #1f232833;
+  --ui-panel-shadow: #1f23283d;
   color-scheme: light;
 }
 

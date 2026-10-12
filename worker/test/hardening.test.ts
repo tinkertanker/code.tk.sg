@@ -22,6 +22,9 @@ describe('hardening', () => {
     await env.DB.prepare('UPDATE documents SET data = ? WHERE key = ?').bind('print("changed")\n', 'cachekey').run();
     const second = await request('/preview/cachekey.py.png');
     expect(second.headers.get('content-type')).toBe('image/png');
+    // Browsers only keep a preview briefly; the long-lived copy is the edge cache
+    expect(first.headers.get('cache-control')).toBe('public, max-age=300');
+    expect(second.headers.get('cache-control')).toBe('public, max-age=300');
     expect(new Uint8Array(await second.arrayBuffer())).toEqual(png);
     // Once the paste is gone, its cached preview is not served
     await env.DB.prepare('DELETE FROM documents WHERE key = ?').bind('cachekey').run();

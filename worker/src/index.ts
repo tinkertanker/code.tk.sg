@@ -49,13 +49,19 @@ async function route(request: Request, env: Env, ctx?: ExecutionContext): Promis
     if (!data) return new Response(null, { status: 404 });
     // Pastes never change, so a rendered preview can be reused from the edge cache
     const cacheKey = new Request(new URL('/preview/' + encodeURIComponent(file), url).toString());
+    // Browsers may keep a preview briefly; only the edge copy (behind the paste check) lasts a day
+    const forClient = (r: Response) => {
+      const response = new Response(r.body, r);
+      response.headers.set('cache-control', 'public, max-age=300');
+      return response;
+    };
     const cached = await edgeCache().match(cacheKey).catch(() => undefined);
-    if (cached) return cached;
+    if (cached) return forClient(cached);
     try {
       const png = await renderPreviewPng(key, ext, data, request.headers.get('host') || url.host);
       const response = new Response(png as Uint8Array<ArrayBuffer>, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
       ctx?.waitUntil(edgeCache().put(cacheKey, response.clone()).catch((e: unknown) => console.error('Preview cache write failed', e)));
-      return response;
+      return forClient(response);
     } catch (e) {
       console.error('Preview rendering failed', e);
       return new Response(null, { status: 500 });

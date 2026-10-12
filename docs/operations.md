@@ -80,8 +80,8 @@ check the older code still works with it before rolling back.
   logged ("Rate limiter failed"). For floods from many IPs, add a Cloudflare WAF
   rate-limiting rule in front of the Worker.
 - Preview images are rendered once and then reused from Cloudflare's edge cache
-  (for up to a day). The paste is always checked first, so an expired paste's
-  preview stops being served when the paste does.
+  (for up to a day); browsers keep one for 5 minutes. The paste is always checked
+  first, so an expired paste's preview stops being served when the paste does.
 - Expired pastes are deleted nightly in batches of 1,000 (up to 100,000 per run).
 - Saves are insert-only; an exhausted keyspace returns 503 instead of
   overwriting. Pastes are unlisted, not private: anyone with the URL can read one.

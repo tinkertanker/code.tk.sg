@@ -186,7 +186,7 @@ describe('HTTP compatibility with real D1 and Static Assets', () => {
       const response = await request('/preview/legacykey' + suffix + '.png');
       expect(response.status).toBe(200);
       expect(response.headers.get('content-type')).toBe('image/png');
-      expect(response.headers.get('cache-control')).toBe('public, max-age=86400');
+      expect(response.headers.get('cache-control')).toBe('public, max-age=300');
       const bytes = new Uint8Array(await response.arrayBuffer());
       expect(Array.from(bytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
       const view = new DataView(bytes.buffer);

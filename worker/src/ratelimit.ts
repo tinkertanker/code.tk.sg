@@ -34,6 +34,8 @@ export class RateLimiter implements DurableObject {
     const row = this.state.storage.sql.exec<{ start: number; window_ms: number }>(
       'SELECT start, window_ms FROM rate_window WHERE id = 1').toArray()[0];
     if (!row || Date.now() >= row.start + row.window_ms) await this.state.storage.deleteAll();
+    // The window was lengthened after this alarm was set: clean up at its new end
+    else await this.state.storage.setAlarm(row.start + row.window_ms);
   }
 }
 

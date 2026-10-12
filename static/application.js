@@ -1,4 +1,4 @@
-/* global $, hljs, hasteLanguageDetect, qrcode, window, document */
+/* global $, hljs, hasteLanguageDetect, hasteFonts, hasteThemes, qrcode, window, document */
 
 ///// represents a single document
 
@@ -99,6 +99,7 @@ var haste = function(appName) {
   this.configureMore();
   this.configureWrapToggle();
   this.configureTextSize();
+  this.configureAppearance();
   var _this = this;
   $(window).on('resize', function() { _this.fitKeySpacer(); });
 };
@@ -294,6 +295,33 @@ haste.prototype.configureTextSize = function() {
   apply();
   $('#text-smaller').on('click', function() { step(-1); });
   $('#text-larger').on('click', function() { step(1); });
+};
+
+// Let people pick the code font and colour scheme (applied early in index.html)
+haste.prototype.configureAppearance = function() {
+  var _this = this;
+  var root = document.documentElement;
+  var font = 'plex';
+  var theme = 'solarized-dark';
+  try {
+    var savedFont = window.localStorage.getItem('codeFont');
+    if (Object.prototype.hasOwnProperty.call(hasteFonts, savedFont)) font = savedFont;
+    var savedTheme = window.localStorage.getItem('theme');
+    if (hasteThemes.indexOf(savedTheme) !== -1) theme = savedTheme;
+  } catch (e) { /* storage unavailable */ }
+  $('#font-select').val(font).on('change', function() {
+    font = $(this).val();
+    root.style.setProperty('--code-font', hasteFonts[font]);
+    try { window.localStorage.setItem('codeFont', font); } catch (e) { /* storage unavailable */ }
+    // Line heights differ between fonts; re-measure once the font has loaded
+    if (document.fonts) document.fonts.ready.then(function() { _this.fitKeySpacer(); });
+    _this.fitKeySpacer();
+  });
+  $('#theme-select').val(theme).on('change', function() {
+    theme = $(this).val();
+    root.setAttribute('data-theme', theme);
+    try { window.localStorage.setItem('theme', theme); } catch (e) { /* storage unavailable */ }
+  });
 };
 
 // Copy the whole paste exactly as saved, without line numbers

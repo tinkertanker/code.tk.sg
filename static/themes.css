@@ -1,0 +1,158 @@
+/*
+ * Code colour schemes for highlight.js, chosen from the More menu.
+ * Solarized: original style from ethanschoonover.com/solarized (c) Jeremy Hull
+ * <sourdrums@gmail.com>. Monokai and GitHub palettes follow their published
+ * colours. See THIRD_PARTY_NOTICES.md.
+ */
+
+:root, :root[data-theme="solarized-dark"] {
+  --page-bg: #000000;
+  --text: #ffffff;      /* text while editing */
+  --lineno: #7d7d7d;
+  --hl-fg: #839496;
+  --hl-comment: #586e75;
+  --hl-keyword: #859900;
+  --hl-string: #2aa198;
+  --hl-title: #268bd2;
+  --hl-attr: #b58900;
+  --hl-meta: #cb4b16;
+  --hl-builtin: #dc322f;
+  --hl-formula-bg: #073642;
+  color-scheme: dark;
+}
+
+:root[data-theme="solarized-light"] {
+  --page-bg: #fdf6e3;
+  --text: #073642;
+  --lineno: #93a1a1;
+  --hl-fg: #657b83;
+  --hl-comment: #93a1a1;
+  --hl-formula-bg: #eee8d5;
+  color-scheme: light;
+}
+
+:root[data-theme="monokai"] {
+  --page-bg: #272822;
+  --text: #f8f8f2;
+  --lineno: #90908a;
+  --hl-fg: #f8f8f2;
+  --hl-comment: #75715e;
+  --hl-keyword: #f92672;
+  --hl-string: #e6db74;
+  --hl-title: #a6e22e;
+  --hl-attr: #66d9ef;
+  --hl-meta: #fd971f;
+  --hl-builtin: #ae81ff;
+  --hl-formula-bg: #3e3d32;
+  color-scheme: dark;
+}
+
+:root[data-theme="github-dark"] {
+  --page-bg: #0d1117;
+  --text: #e6edf3;
+  --lineno: #6e7681;
+  --hl-fg: #c9d1d9;
+  --hl-comment: #8b949e;
+  --hl-keyword: #ff7b72;
+  --hl-string: #a5d6ff;
+  --hl-title: #d2a8ff;
+  --hl-attr: #79c0ff;
+  --hl-meta: #ffa657;
+  --hl-builtin: #ffa657;
+  --hl-formula-bg: #161b22;
+  color-scheme: dark;
+}
+
+:root[data-theme="github-light"] {
+  --page-bg: #ffffff;
+  --text: #1f2328;
+  --lineno: #8c959f;
+  --hl-fg: #24292f;
+  --hl-comment: #6e7781;
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-title: #8250df;
+  --hl-attr: #0550ae;
+  --hl-meta: #953800;
+  --hl-builtin: #953800;
+  --hl-formula-bg: #f6f8fa;
+  color-scheme: light;
+}
+
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.5em;
+  background: var(--page-bg);
+  color: var(--hl-fg);
+}
+
+.hljs-comment,
+.hljs-quote,
+.hljs-tag {
+  color: var(--hl-comment);
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition,
+.hljs-code,
+.hljs-template-tag {
+  color: var(--hl-keyword);
+}
+
+.hljs-number,
+.hljs-string,
+.hljs-meta .hljs-meta-string,
+.hljs-literal,
+.hljs-doctag,
+.hljs-regexp {
+  color: var(--hl-string);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: var(--hl-title);
+}
+
+.hljs-attribute,
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-class .hljs-title,
+.hljs-type {
+  color: var(--hl-attr);
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst,
+.hljs-operator,
+.hljs-punctuation,
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-link {
+  color: var(--hl-meta);
+}
+
+.hljs-built_in,
+.hljs-deletion {
+  color: var(--hl-builtin);
+}
+
+.hljs-formula {
+  background: var(--hl-formula-bg);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}

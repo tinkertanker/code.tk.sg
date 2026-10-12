@@ -54,7 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Solarized theme — attribution and MIT notice
 
-`static/solarized_dark.css` retains the highlight.js theme's attribution:
+`static/themes.css` retains the highlight.js Solarized theme's attribution:
 
 > Orginal Style from ethanschoonover.com/solarized (c) Jeremy Hull <sourdrums@gmail.com>
 
@@ -164,6 +164,21 @@ without prior written authorization from the Gnome Foundation or Bitstream
 Inc., respectively. For further information, contact: fonts at gnome dot
 org.
 ```
+
+## Code fonts — SIL Open Font License 1.1
+
+`static/fonts/` contains Latin-subset WOFF2 files from the Fontsource packages,
+each with its licence in `OFL.txt` alongside:
+
+- IBM Plex Mono — Copyright 2017 IBM Corp.
+- JetBrains Mono — Copyright 2020 The JetBrains Mono Project Authors
+- Fira Code — Copyright 2014-2020 The Fira Code Project Authors
+- Source Code Pro — Adobe; licence text as distributed by Google Fonts
+
+## Colour schemes
+
+`static/themes.css` also includes palettes based on the published Monokai
+(Wimer Hazenberg) and GitHub Primer colours.
 
 ## Other dependencies and branding
 

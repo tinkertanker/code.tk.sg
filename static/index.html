@@ -9,17 +9,35 @@
 		<link rel="icon" href="/favicon.svg?v=3" type="image/svg+xml"/>
 		<link rel="icon" href="/favicon-256.png?v=3" type="image/png" sizes="256x256"/>
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=3"/>
-		<link rel="stylesheet" type="text/css" href="solarized_dark.css"/>
-		<link rel="stylesheet" type="text/css" href="application.css?v=toolbar-menu-3"/>
+		<link rel="stylesheet" type="text/css" href="themes.css?v=themes-1"/>
+		<link rel="stylesheet" type="text/css" href="application.css?v=themes-1"/>
 
 		<script src="https://code.jquery.com/jquery-4.0.0.min.js" integrity="sha384-fgGyf7Mo7DURSOMnOy7ed+dkq5Job205Gnzu6QIg0BOHKaqt4D76Dt8VlDCzcMHV" crossorigin="anonymous"></script>
 		<script type="text/javascript" src="highlight.min.js?v=languages-2"></script>
 		<script type="text/javascript" src="language-detect.js?v=languages-2"></script>
 		<!-- qrcode-generator 1.4.4, MIT; generated locally, no external QR service. -->
 		<script type="text/javascript" src="vendor/qrcode.js"></script>
-		<script type="text/javascript" src="application.min.js?v=toolbar-menu-2"></script>
+		<script type="text/javascript" src="application.min.js?v=themes-1"></script>
 
 		<meta name="robots" content="noindex,nofollow"/>
+
+		<script type="text/javascript">
+			// Apply saved font and colours before first paint (see configureAppearance)
+			var hasteFonts = {
+				plex: '"IBM Plex Mono", monospace',
+				jetbrains: '"JetBrains Mono", monospace',
+				fira: '"Fira Code", monospace',
+				source: '"Source Code Pro", monospace',
+				system: 'monospace'
+			};
+			var hasteThemes = ['solarized-dark', 'monokai', 'github-dark', 'solarized-light', 'github-light'];
+			try {
+				var savedTheme = window.localStorage.getItem('theme');
+				if (hasteThemes.indexOf(savedTheme) !== -1) document.documentElement.setAttribute('data-theme', savedTheme);
+				var savedFont = window.localStorage.getItem('codeFont');
+				if (Object.prototype.hasOwnProperty.call(hasteFonts, savedFont)) document.documentElement.style.setProperty('--code-font', hasteFonts[savedFont]);
+			} catch (e) { /* storage unavailable */ }
+		</script>
 
 		<script type="text/javascript">
 			var app = null;
@@ -84,6 +102,26 @@
 						<output id="text-size" aria-live="polite">100%</output>
 						<button id="text-larger" aria-label="Larger text">A+</button>
 					</div>
+				</div>
+				<div class="menu-row">
+					<label for="font-select">Font</label>
+					<select id="font-select">
+						<option value="plex">IBM Plex Mono</option>
+						<option value="jetbrains">JetBrains Mono</option>
+						<option value="fira">Fira Code</option>
+						<option value="source">Source Code Pro</option>
+						<option value="system">System monospace</option>
+					</select>
+				</div>
+				<div class="menu-row">
+					<label for="theme-select">Colours</label>
+					<select id="theme-select">
+						<option value="solarized-dark">Solarized Dark</option>
+						<option value="monokai">Monokai</option>
+						<option value="github-dark">GitHub Dark</option>
+						<option value="solarized-light">Solarized Light</option>
+						<option value="github-light">GitHub Light</option>
+					</select>
 				</div>
 				<label class="menu-row">
 					<span>Wrap long lines</span>

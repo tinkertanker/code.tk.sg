@@ -45,8 +45,8 @@ scripts/rdb-to-d1/           one-off Redis dump -> D1 SQL converter
 
   - Saves are insert-only (`INSERT ... ON CONFLICT DO NOTHING`, retry with a
     new key; fail when keys are exhausted), never overwriting.
-  - `GET /documents/{id}` renews `expires_at = now + expire` (sliding expiry);
-    `/raw/{id}` and page loads do not renew, matching
+  - `GET /documents/{id}` and `GET /raw/{id}` renew `expires_at = now + expire`
+    (sliding expiry); page loads (`/{key}`) and `/preview/...` do not, matching
     `test_sliding_expiry_only_on_document_reads`.
   - Expired rows are invisible on read and deleted by a daily Cron Trigger.
   - Static documents (`about` from `about.md`) are bundled into the Worker and
@@ -84,7 +84,8 @@ with the same intent; none are dropped silently.
 1. **Core Worker** (sub-orb A): skeleton, D1 store, routes, uploads, keys,
    rate limit, static assets, tests porting the compatibility contract.
 2. **Preview images** (sub-orb B): `src/preview.ts` with
-   `renderPreviewPng(key, ext, data, host)` and `injectMeta(indexHtml, ...)`,
+   `renderPreviewPng(key, ext: string | undefined, data, host)` and
+   `injectMeta(indexHtml, {key, data, url, imageUrl})` (all strings),
    matching `src/preview.rs` output closely; its own tests.
 3. **Data migration tool** (sub-orb C): `scripts/rdb-to-d1`, verified against
    the real dump's key count and spot-checked contents.

@@ -68,4 +68,11 @@ describe('indentation fixing', function(){
 	it('drops a zero-width BOM from indentation', function(){
 		strictEqual(analyze('x:\n\ufeff    y\n').fixed, 'x:\n    y\n');
 	});
+
+	it('offers no fix at all when multiline strings could be changed', function(){
+		// Tab and non-breaking space inside strings must survive untouched
+		strictEqual(analyze('def f():\n    s = """\n\tkeep tab\n    """\n\tx = 1\n'), null);
+		strictEqual(analyze('x = `\n\u00a0\u00a0kept\n`\n\u00a0\u00a0y()\n'), null);
+		strictEqual(analyze("a = '''\n\tkept\n'''\n  \tb\n"), null);
+	});
 });

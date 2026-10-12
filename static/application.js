@@ -437,6 +437,8 @@ haste.prototype.checkIndentation = function() {
 
 // Fix in place while editing (undoable); open a fixed copy of a saved paste
 haste.prototype.fixIndentation = function() {
+  // Re-analyse the current text: the debounced check may predate the latest edit
+  this.checkIndentation();
   if (!this.indentFix) return;
   var fixed = this.indentFix.fixed;
   if (this.doc.locked) {

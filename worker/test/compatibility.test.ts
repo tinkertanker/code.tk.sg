@@ -1,3 +1,4 @@
+import { limiterId } from '../src/ratelimit';
 import { env } from 'cloudflare:workers';
 import { evictDurableObject } from 'cloudflare:test';
 import { describe, it, expect, inject } from 'vitest';
@@ -282,7 +283,7 @@ describe('HTTP compatibility with real D1 and Static Assets', () => {
     const responses = await Promise.all(Array.from({ length: 8 }, () => request('/raw/about', {}, vars)));
     expect(responses.filter(r => r.status === 200)).toHaveLength(2);
     expect(responses.filter(r => r.status === 429)).toHaveLength(6);
-    await evictDurableObject(env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName('global')));
+    await evictDurableObject(env.RATE_LIMITER.get(limiterId(env, 'unknown')));
     expect((await request('/', {}, vars)).status).toBe(429);
   });
 

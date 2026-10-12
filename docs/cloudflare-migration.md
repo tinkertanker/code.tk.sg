@@ -55,8 +55,9 @@ scripts/rdb-to-d1/           one-off Redis dump -> D1 SQL converter
 - **Config** moves from `config.json` to `wrangler.jsonc` vars: `KEY_LENGTH`
   (10), `MAX_LENGTH` (400000), `EXPIRE` (31536000), `STATIC_MAX_AGE` (86400),
   `RATE_WINDOW_MS` (1800000), `RATE_MAX` (250).
-- **Rate limiting**: keep today's semantics (one fixed window shared by all
-  routes, per client IP from `CF-Connecting-IP`, never `X-Forwarded-For`).
+- **Rate limiting**: one fixed window per client IP from `CF-Connecting-IP`
+  (never `X-Forwarded-For`), shared by all routes. Since 2026-10-12 each IP has
+  its own Durable Object instead of one global object.
   Implement with a Durable Object or D1 counter; the Rate Limiting binding's
   10s/60s periods can't express a 30-minute window.
 

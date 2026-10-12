@@ -53,7 +53,8 @@ npx wrangler deployments list
 npx wrangler rollback <version-id>
 ```
 
-Rolling back code does not touch D1 data. If a migration changed the schema,
+Add `--env staging` to either command for staging. Rolling back code does not
+touch D1 data. If a migration changed the schema,
 check the older code still works with it before rolling back.
 
 ## Backups
@@ -72,10 +73,15 @@ check the older code still works with it before rolling back.
 - `MAX_LENGTH` (400000) limits UTF-8 bytes. Raw uploads are rejected as soon as
   they exceed it; multipart bodies may add 16 KiB of envelope and accept one
   `data` field and no files. Unknown charsets return 400.
-- Rate limiting is one fixed window shared by all routes (250 requests per 30
-  minutes per client IP from `CF-Connecting-IP`; forwarded headers are never
-  trusted). If the limiter errors, requests are allowed through and the error is
-  logged ("Rate limiter failed").
+- Rate limiting allows 250 requests per 30-minute window per client IP
+  (`CF-Connecting-IP`; forwarded headers are never trusted), shared by all
+  routes. Each IP has its own Durable Object, and its window starts at its first
+  request. If the limiter errors, requests are allowed through and the error is
+  logged ("Rate limiter failed"). For floods from many IPs, add a Cloudflare WAF
+  rate-limiting rule in front of the Worker.
+- Preview images are cached in Cloudflare's edge cache for a day after the first
+  render, so an expired paste's preview can outlive it by up to a day.
+- Expired pastes are deleted nightly in batches of 1,000 (up to 100,000 per run).
 - Saves are insert-only; an exhausted keyspace returns 503 instead of
   overwriting. Pastes are unlisted, not private: anyone with the URL can read one.
 - Run `npm audit` in the repository root and in `worker/` when updating

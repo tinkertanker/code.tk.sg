@@ -34,6 +34,7 @@ jobs:
           npx wrangler d1 execute DB --local --command "INSERT INTO documents VALUES ('legacykey', 'old paste' || char(10) || 'é <&>' || char(10), NULL)"
           npm run dev:compat -- --port 8787 --var MAX_LENGTH:32 --var EXPIRE:60 --var RATE_MAX:10000 > ../wrangler.log 2>&1 &
           for attempt in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8787/ && break; sleep 1; done
+          curl -sf -o /dev/null http://127.0.0.1:8787/ || { echo 'wrangler dev did not start'; cat ../wrangler.log; exit 1; }
           cd ..
           WORKER_URL=http://127.0.0.1:8787 python3 tests/compatibility.py || { cat wrangler.log; exit 1; }
 

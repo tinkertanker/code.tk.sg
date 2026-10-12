@@ -7,7 +7,10 @@ export { RateLimiter } from './ratelimit';
 
 const error = (status: number, message: string) => Response.json({ message }, { status });
 
-async function route(request: Request, env: Env): Promise<Response> {
+// Workers' default edge cache (the DOM CacheStorage type lacks it)
+const edgeCache = () => (caches as CacheStorage & { default: Cache }).default;
+
+async function route(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const method = request.method;
   const read = method === 'GET' || method === 'HEAD';
@@ -41,11 +44,17 @@ async function route(request: Request, env: Env): Promise<Response> {
     const file = decodeURIComponent(preview[1]);
     if (!read || !file.endsWith('.png')) return new Response(null, { status: 404 });
     const [key, ext] = file.slice(0, -4).split('.');
+    // Pastes never change, so a rendered preview can be reused from the edge cache
+    const cacheKey = new Request(new URL('/preview/' + encodeURIComponent(file), url).toString());
+    const cached = await edgeCache().match(cacheKey).catch(() => undefined);
+    if (cached) return cached;
     const data = await store.get(key).catch(() => null);
     if (!data) return new Response(null, { status: 404 });
     try {
       const png = await renderPreviewPng(key, ext, data, request.headers.get('host') || url.host);
-      return new Response(png as Uint8Array<ArrayBuffer>, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
+      const response = new Response(png as Uint8Array<ArrayBuffer>, { headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' } });
+      ctx?.waitUntil(edgeCache().put(cacheKey, response.clone()).catch((e: unknown) => console.error('Preview cache write failed', e)));
+      return response;
     } catch (e) {
       console.error('Preview rendering failed', e);
       return new Response(null, { status: 500 });
@@ -80,7 +89,7 @@ async function route(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     // A limiter failure must not take the site down: fail open and log it
     const rate = await rateLimit(request, env).catch((e) => {
       console.error('Rate limiter failed', e);
@@ -89,7 +98,7 @@ export default {
     let response: Response;
     if (rate.limited) response = new Response('Too many requests, please try again later.', { status: 429 });
     else {
-      try { response = await route(request, env); }
+      try { response = await route(request, env, ctx); }
       catch (e) {
         console.error('Request failed', e);
         response = new Response(null, { status: e instanceof URIError ? 400 : 500 });

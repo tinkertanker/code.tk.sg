@@ -29,8 +29,16 @@ export class Store {
     return null;
   }
 
-  async cleanup(): Promise<void> {
-    await this.db.prepare('DELETE FROM documents WHERE expires_at <= ?')
-      .bind(Math.floor(Date.now() / 1000)).run();
+  // Delete in batches so a large backlog can't exceed D1's per-query limits
+  async cleanup(batch = 1000, maxBatches = 100): Promise<number> {
+    const now = Math.floor(Date.now() / 1000);
+    let deleted = 0;
+    for (let i = 0; i < maxBatches; i++) {
+      const result = await this.db.prepare(`DELETE FROM documents WHERE key IN
+        (SELECT key FROM documents WHERE expires_at <= ? LIMIT ?)`).bind(now, batch).run();
+      deleted += result.meta.changes;
+      if (result.meta.changes < batch) break;
+    }
+    return deleted;
   }
 }

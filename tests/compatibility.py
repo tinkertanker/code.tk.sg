@@ -194,7 +194,7 @@ class HttpContracts(Server):
             status, headers, png = self.request("/preview/legacykey" + suffix + ".png")
             self.assertEqual(status, 200)
             self.assertEqual(headers["Content-Type"], "image/png")
-            self.assertEqual(headers["Cache-Control"], "public, max-age=86400")
+            self.assertEqual(headers["Cache-Control"], "public, max-age=300")
             self.assertEqual(png[:8], b"\x89PNG\r\n\x1a\n")
             self.assertEqual(struct.unpack(">II", png[16:24]), (1200, 900))
         # Ruby's character literal grammar can split an astral character between spans.

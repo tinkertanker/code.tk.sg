@@ -1,41 +1,54 @@
 import type { Env } from './env';
 
-// One durable singleton owns the global fixed window, including across isolates.
+// One Durable Object per client IP holds that IP's fixed window, so no single
+// object serialises every request and a flood only queues on its own IPs.
 export class RateLimiter implements DurableObject {
-  constructor(private state: DurableObjectState) {
-    state.storage.sql.exec('CREATE TABLE IF NOT EXISTS rate_window (id INTEGER PRIMARY KEY, start INTEGER NOT NULL)');
-    state.storage.sql.exec('CREATE TABLE IF NOT EXISTS rates (ip TEXT PRIMARY KEY, hits INTEGER NOT NULL)');
+  constructor(private state: DurableObjectState) {}
+
+  // Recreated on demand: alarm() deletes all storage once a window has passed
+  private table() {
+    this.state.storage.sql.exec(`CREATE TABLE IF NOT EXISTS rate_window
+      (id INTEGER PRIMARY KEY, start INTEGER NOT NULL, hits INTEGER NOT NULL, window_ms INTEGER NOT NULL)`);
   }
 
   async fetch(request: Request): Promise<Response> {
-    const { ip, windowMs, max } = await request.json<{
-      ip: string; windowMs: number; max: number;
-    }>();
+    const { windowMs, max } = await request.json<{ windowMs: number; max: number }>();
+    this.table();
     const result = this.state.storage.transactionSync(() => {
       const sql = this.state.storage.sql;
       const now = Date.now();
-      let start = sql.exec<{ start: number }>('SELECT start FROM rate_window WHERE id = 1').toArray()[0]?.start;
-      if (start === undefined || now - start >= windowMs) {
-        start = now;
-        sql.exec('DELETE FROM rates');
-        sql.exec('INSERT OR REPLACE INTO rate_window VALUES (1, ?)', start);
-      }
-      const { hits } = sql.exec<{ hits: number }>(`INSERT INTO rates VALUES (?, 1)
-        ON CONFLICT(ip) DO UPDATE SET hits = hits + 1 RETURNING hits`, ip).one();
-      return { hits, reset: start + windowMs, now };
+      const row = sql.exec<{ start: number; hits: number }>('SELECT start, hits FROM rate_window WHERE id = 1').toArray()[0];
+      const fresh = !row || now - row.start >= windowMs;
+      const start = fresh ? now : row.start;
+      const hits = fresh ? 1 : row.hits + 1;
+      sql.exec('INSERT OR REPLACE INTO rate_window VALUES (1, ?, ?, ?)', start, hits, windowMs);
+      return { hits, reset: start + windowMs, now, fresh };
     });
-    return Response.json({ ...result, max });
+    // Each new window schedules its own cleanup, so idle IPs leave no storage behind
+    if (result.fresh) await this.state.storage.setAlarm(result.reset);
+    return Response.json({ hits: result.hits, reset: result.reset, now: result.now, max });
+  }
+
+  async alarm(): Promise<void> {
+    this.table();
+    const row = this.state.storage.sql.exec<{ start: number; window_ms: number }>(
+      'SELECT start, window_ms FROM rate_window WHERE id = 1').toArray()[0];
+    if (!row || Date.now() >= row.start + row.window_ms) await this.state.storage.deleteAll();
+    // The window was lengthened after this alarm was set: clean up at its new end
+    else await this.state.storage.setAlarm(row.start + row.window_ms);
   }
 }
 
+export function limiterId(env: Env, ip: string) {
+  return env.RATE_LIMITER.idFromName('ip:' + ip);
+}
+
 export async function rateLimit(request: Request, env: Env) {
-  const stub = env.RATE_LIMITER.get(env.RATE_LIMITER.idFromName('global'));
-  const response = await stub.fetch('https://rate.internal/', {
+  // CF-Connecting-IP is set by Cloudflare and can't be spoofed; never trust X-Forwarded-For
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const response = await env.RATE_LIMITER.get(limiterId(env, ip)).fetch('https://rate.internal/', {
     method: 'POST',
-    body: JSON.stringify({
-      ip: request.headers.get('CF-Connecting-IP') || 'unknown',
-      windowMs: Number(env.RATE_WINDOW_MS), max: Number(env.RATE_MAX),
-    }),
+    body: JSON.stringify({ windowMs: Number(env.RATE_WINDOW_MS), max: Number(env.RATE_MAX) }),
   });
   const { hits, reset, now, max } = await response.json<{
     hits: number; reset: number; now: number; max: number;

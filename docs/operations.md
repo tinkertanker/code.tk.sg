@@ -2,27 +2,29 @@
 
 ## Architecture
 
-code.tk.sg is a Cloudflare Worker in the Tinkertanker Cloudflare account.
+code.tk.sg is a Cloudflare Worker in the Tinkertanker Cloudflare account:
 
-| | Production | Staging |
-|---|---|---|
-| Worker | `code-tk` | `code-tk-staging` |
-| Hostname | `code.tk.sg` (Worker custom domain) | `code-staging.tk.sg`, `code-tk-staging.tinkertanker.workers.dev` |
-| D1 database | `code-tk-prod` | `code-tk-staging` |
-| Rate limiter | Durable Object `RateLimiter` | its own `RateLimiter` |
+| | |
+|---|---|
+| Worker | `code-tk` |
+| Hostname | `code.tk.sg` (Worker custom domain) |
+| D1 database | `code-tk-prod` |
+| Rate limiter | Durable Object `RateLimiter`, one per client IP |
 
-Both are defined in `worker/wrangler.jsonc` (production at top level, staging
-under `env.staging`). The Worker serves `static/` as Workers Static Assets, stores
-pastes in D1 (`worker/migrations/`), and deletes expired pastes in a daily cron
-(00:00 UTC). Other `*.tk.sg` names still resolve through the `*.tk.sg` wildcard;
-the custom domain overrides it for `code.tk.sg` only.
+It is defined in `worker/wrangler.jsonc`. The Worker serves `static/` as
+Workers Static Assets, stores pastes in D1 (`worker/migrations/`), and deletes
+expired pastes in a daily cron (00:00 UTC). Other `*.tk.sg` names still resolve
+through the `*.tk.sg` wildcard; the custom domain overrides it for `code.tk.sg`
+only. There is no staging environment: changes are checked by the test suites
+(including `tests/compatibility.py` against a local Worker in CI) and a
+post-deploy smoke test.
 
 ## Deploying
 
 **Merging to `main` deploys automatically.** After both test jobs pass, the CI
-`deploy` job applies D1 migrations and deploys to staging, smoke-tests it
-(`scripts/smoke-test.sh`, which saves one small paste), then does the same for
-production. Deploys run one at a time in the GitHub `production` environment.
+`deploy` job applies D1 migrations, deploys to production and smoke-tests it
+(`scripts/smoke-test.sh`, which saves one small paste). Deploys run one at a
+time in the GitHub `production` environment.
 
 The job needs a `CLOUDFLARE_API_TOKEN` secret on that environment (repository
 Settings → Environments → production). Use a token scoped to the Tinkertanker
@@ -32,26 +34,26 @@ deployed.
 
 To deploy by hand (for example to redeploy after a rollback), use a token with
 the same access (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only
-what is merged to `main`, staging first:
+what is merged to `main`:
 
 ```sh
 git checkout main && git pull
 npm ci && npm run build
 cd worker && npm ci
-npx wrangler deploy --env staging   # check https://code-staging.tk.sg
-npx wrangler deploy                 # production
+npx wrangler deploy
+cd .. && scripts/smoke-test.sh https://code.tk.sg
 ```
 
-After a production deploy, check the home page, an existing paste
-(`/raw/<key>`), saving a new paste, and a preview image
-(`/preview/<key>.png`). Bump the `?v=` keys in `static/index.html` when changing
-static CSS or JS so browsers fetch the new files.
+The smoke test checks the home page, saving a paste, raw text, the document
+API and a preview image; also open an existing paste in a browser. Bump the
+`?v=` keys in `static/index.html` when changing static CSS or JS so browsers
+fetch the new files.
 
-Schema changes go in a new `worker/migrations/NNNN_*.sql` file. Apply them to
-staging and production before deploying code that needs them:
+Schema changes go in a new `worker/migrations/NNNN_*.sql` file; try them on a
+local D1 first (`npm run db:init`). Apply them before deploying code that needs
+them:
 
 ```sh
-npx wrangler d1 migrations apply DB --env staging --remote
 npx wrangler d1 migrations apply DB --remote
 ```
 
@@ -64,8 +66,7 @@ npx wrangler deployments list
 npx wrangler rollback <version-id>
 ```
 
-Add `--env staging` to either command for staging. Rolling back code does not
-touch D1 data. Rolling back to a version from before 2026-10-12's per-IP rate
+Rolling back code does not touch D1 data. Rolling back to a version from before 2026-10-12's per-IP rate
 limiter leaves pending limiter alarms without a handler: they fail and retry
 harmlessly in the logs, and rolling forward again cleans up. If a migration changed the schema,
 check the older code still works with it before rolling back.

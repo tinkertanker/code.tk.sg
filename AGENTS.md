@@ -17,9 +17,12 @@ Rust/Docker deployment on `dev.tk.sg` was retired on 2026-10-12. See
 
 ## Deploying
 
-- Deploying requires explicit user approval, per deploy. Deploy only `main`,
-  staging (`--env staging`) before production; see `docs/operations.md` for
-  commands, post-deploy checks and rollback.
+- Merging to `main` runs the CI deploy job, which updates production whenever
+  the `CLOUDFLARE_API_TOKEN` secret is set (see `docs/operations.md`), so
+  merging needs the same approval as deploying. There is no staging
+  environment; run the full test suites before merging.
+- Manual deploys require explicit user approval, per deploy. Deploy only `main`;
+  see `docs/operations.md` for commands, post-deploy checks and rollback.
 - Credentials: the `CLOUDFLARE_API_KEY_TT` secret is an API token for the
   Tinkertanker account (export it as `CLOUDFLARE_API_TOKEN`). Never print it.
 - Never touch D1 production data (imports, deletes, time-travel restores) without

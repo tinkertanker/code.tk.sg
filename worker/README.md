@@ -1,7 +1,6 @@
 # code.tk.sg Cloudflare Worker
 
-This Worker serves production code.tk.sg (`code-tk`, D1 `code-tk-prod`) and
-staging code-staging.tk.sg (`code-tk-staging`, D1 `code-tk-staging`); see
+This Worker serves code.tk.sg (`code-tk`, D1 `code-tk-prod`); see
 `wrangler.jsonc` and `docs/cloudflare-migration.md`. The commands below are
 local and need no Cloudflare credentials.
 

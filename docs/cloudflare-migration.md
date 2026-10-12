@@ -114,8 +114,9 @@ thread with the user's approval.
   (1,845 rows, verified counts and bytes), and pastes created or renewed on the
   old server after that snapshot may be lost.
 - `code-tk` deployed with the `code.tk.sg` custom domain (version
-  30900e81-b219-4e0b-9baf-6ec31813fd01). Staging: `code-tk-staging` on
-  `code-staging.tk.sg`.
+  30900e81-b219-4e0b-9baf-6ec31813fd01). The staging Worker, its D1 database and
+  `code-staging.tk.sg` were used for the cutover rehearsal and removed later the
+  same day.
 - Rollback: remove the `code.tk.sg` custom domain from the Worker; the name falls
   back to the `*.tk.sg` wildcard (old server).
 - Optional catch-up if the old box returns: keep its `haste` container stopped,

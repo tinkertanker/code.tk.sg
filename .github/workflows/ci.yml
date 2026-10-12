@@ -9,9 +9,10 @@ on:
 permissions:
   contents: read
 
+# Superseded PR runs are cancelled; runs on main are never cancelled mid-deploy
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build-and-test:
@@ -53,3 +54,53 @@ jobs:
       - name: Worker typecheck, tests and bundle
         working-directory: worker
         run: npm ci && npm run typecheck && npm test && npm run build
+
+  # Deploys main to production after both test jobs pass, then smoke-tests it.
+  # Needs a CLOUDFLARE_API_TOKEN secret (repository or "production" environment).
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-and-test, worker]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://code.tk.sg
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: b8b1032c61d9475cd00229c74db7ec72
+    # The token is passed only to the steps that need it, never to npm installs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # Until the secret exists, skip deploying (with a warning) rather than failing main
+      - name: Check deploy credentials
+        id: creds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::warning::CLOUDFLARE_API_TOKEN is not set; skipping the production deploy'
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build (no dependency install scripts)
+        if: steps.creds.outputs.ready == 'true'
+        run: npm ci --ignore-scripts && npm run build && npm --prefix worker ci --ignore-scripts
+      - name: Production migrations and deploy
+        if: steps.creds.outputs.ready == 'true'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx wrangler d1 migrations apply DB --remote
+          npx wrangler deploy
+      - name: Production smoke test
+        if: steps.creds.outputs.ready == 'true'
+        run: scripts/smoke-test.sh https://code.tk.sg

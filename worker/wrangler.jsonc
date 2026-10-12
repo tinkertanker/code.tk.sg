@@ -34,30 +34,5 @@
     "RATE_WINDOW_MS": 1800000,
     "RATE_MAX": 250
   },
-  "triggers": { "crons": ["0 0 * * *"] },
-  "env": {
-    "staging": {
-      "name": "code-tk-staging",
-      "workers_dev": true,
-      "triggers": { "crons": ["0 0 * * *"] },
-      "routes": [{ "pattern": "code-staging.tk.sg", "custom_domain": true }],
-      "d1_databases": [{
-        "binding": "DB",
-        "database_name": "code-tk-staging",
-        "database_id": "f92ead6c-7650-4d17-8719-58d3dcef2c8a",
-        "migrations_dir": "migrations"
-      }],
-      "durable_objects": {
-        "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
-      },
-      "vars": {
-        "KEY_LENGTH": 10,
-        "MAX_LENGTH": 400000,
-        "EXPIRE": 31536000,
-        "STATIC_MAX_AGE": 86400,
-        "RATE_WINDOW_MS": 1800000,
-        "RATE_MAX": 250
-      }
-    }
-  }
+  "triggers": { "crons": ["0 0 * * *"] }
 }

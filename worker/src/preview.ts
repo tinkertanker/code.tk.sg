@@ -2,6 +2,7 @@ import hljs from 'highlight.js';
 import { initWasm, Resvg } from '@resvg/resvg-wasm';
 import wasm from '@resvg/resvg-wasm/index_bg.wasm';
 import font from '../../lib/fonts/DejaVuSansMono.ttf';
+import fontBold from '../../lib/fonts/DejaVuSansMono-Bold.ttf';
 import logo from '../../static/tinkercademy.png';
 
 const FOREGROUND = '#839496';
@@ -126,7 +127,7 @@ width="1200" height="900" viewBox="0 0 1200 900">
 <text x="112" y="58" fill="#eee8d5">code.tk.sg/${escape(key)}</text>
 <text x="1152" y="58" fill="#93a1a1" text-anchor="end">${escape(label)}</text>
 </g>
-<g font-family="DejaVu Sans Mono" font-size="${FONT_SIZE.toFixed(1)}">${body}</g>
+<g font-family="DejaVu Sans Mono" font-weight="bold" font-size="${FONT_SIZE.toFixed(1)}">${body}</g>
 <rect y="820" width="100%" height="80" fill="url(#fade)"/>
 <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000"/>
@@ -139,7 +140,7 @@ export async function renderPreviewPng(key: string, ext: string | undefined, dat
   initialized ??= initWasm(wasm);
   await initialized;
   const renderer = new Resvg(buildSvg(key, ext, data), {
-    font: {fontBuffers: [new Uint8Array(font)], defaultFontFamily: 'DejaVu Sans Mono', loadSystemFonts: false},
+    font: {fontBuffers: [new Uint8Array(font), new Uint8Array(fontBold)], defaultFontFamily: 'DejaVu Sans Mono', loadSystemFonts: false},
   });
   try {
     const image = renderer.render();

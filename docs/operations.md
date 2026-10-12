@@ -19,8 +19,19 @@ the custom domain overrides it for `code.tk.sg` only.
 
 ## Deploying
 
-Deploys need a Cloudflare API token with Workers and D1 access for the
-Tinkertanker account (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only
+**Merging to `main` deploys automatically.** After both test jobs pass, the CI
+`deploy` job applies D1 migrations and deploys to staging, smoke-tests it
+(`scripts/smoke-test.sh`, which saves one small paste), then does the same for
+production. Deploys run one at a time in the GitHub `production` environment.
+
+The job needs a `CLOUDFLARE_API_TOKEN` secret on that environment (repository
+Settings → Environments → production). Use a token scoped to the Tinkertanker
+account with **Workers Scripts: Edit**, **D1: Edit** and **Workers Routes: Edit**
+(zone `tk.sg`) only. Without it the job fails with a clear error and nothing is
+deployed.
+
+To deploy by hand (for example to redeploy after a rollback), use a token with
+the same access (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`). Deploy only
 what is merged to `main`, staging first:
 
 ```sh

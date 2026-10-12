@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "code-tk",
+  "name": "code-tk", // production: deploy only at cutover
+  "workers_dev": false,
   "main": "src/index.ts",
   "compatibility_date": "2026-08-22",
   "assets": {
@@ -12,8 +13,8 @@
   },
   "d1_databases": [{
     "binding": "DB",
-    "database_name": "code-tk",
-    "database_id": "00000000-0000-0000-0000-000000000000",
+    "database_name": "code-tk-prod",
+    "database_id": "1b034db3-d955-4373-ae31-7390a5630d38",
     "migrations_dir": "migrations"
   }],
   "durable_objects": {
@@ -32,5 +33,29 @@
     "RATE_WINDOW_MS": 1800000,
     "RATE_MAX": 250
   },
-  "triggers": { "crons": ["0 0 * * *"] }
+  "triggers": { "crons": ["0 0 * * *"] },
+  "env": {
+    "staging": {
+      "name": "code-tk-staging",
+      "workers_dev": true,
+      "routes": [{ "pattern": "code-staging.tk.sg", "custom_domain": true }],
+      "d1_databases": [{
+        "binding": "DB",
+        "database_name": "code-tk-staging",
+        "database_id": "f92ead6c-7650-4d17-8719-58d3dcef2c8a",
+        "migrations_dir": "migrations"
+      }],
+      "durable_objects": {
+        "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }]
+      },
+      "vars": {
+        "KEY_LENGTH": 10,
+        "MAX_LENGTH": 400000,
+        "EXPIRE": 31536000,
+        "STATIC_MAX_AGE": 86400,
+        "RATE_WINDOW_MS": 1800000,
+        "RATE_MAX": 250
+      }
+    }
+  }
 }

@@ -99,7 +99,7 @@ body.key-overlay #box .key-spacer {
 	top: 16px;
 	right: 16px;
 	z-index: 1000;
-	min-width: 230px;
+	min-width: 260px;
 	background: #141518;
 	border: 1px solid #32353b;
 	border-radius: 10px;
@@ -340,8 +340,8 @@ body.key-overlay #box .key-spacer {
 
 #more-panel {
 	box-sizing: border-box;
-	width: 260px;
-	max-width: calc(100vw - 32px);
+	left: -1px; /* match the toolbar, border included */
+	right: -1px;
 	padding: 6px;
 	font-size: 14px;
 }

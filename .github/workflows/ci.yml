@@ -1,8 +1,8 @@
-name: Rust compatibility and runtime
+name: CI
 
 on:
   pull_request:
-    branches: [main, cloudflare-rewrite]
+    branches: [main]
   push:
     branches: [main]
 
@@ -16,27 +16,26 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Compatibility, frontend tests, and Rust lint
-        run: docker build --target test -t code-tk:test .
-      - name: Build runtime image
-        run: docker build --target runner -t code-tk:ci .
-      - name: Runtime startup and packaging smoke test
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Frontend build and tests
+        run: npm ci && npm run build && npm test
+      - name: HTTP contracts against local wrangler dev
         run: |
-          trap 'docker logs code-tk-smoke; docker rm -f code-tk-smoke' EXIT
-          docker run -d --name code-tk-smoke code-tk:ci
-          for attempt in $(seq 1 30); do
-            if docker exec code-tk-smoke code-tk --healthcheck; then
-              break
-            fi
-            sleep 1
-          done
-          docker exec code-tk-smoke code-tk --healthcheck
-          docker exec code-tk-smoke sh -c 'test "$(id -u)" = 1001 && ! command -v node && ! command -v cargo'
+          npm --prefix worker ci
+          cd worker
+          npm run db:init
+          npx wrangler d1 execute DB --local --command "INSERT INTO documents VALUES ('legacykey', 'old paste' || char(10) || 'é <&>' || char(10), NULL)"
+          npm run dev:compat -- --port 8787 --var MAX_LENGTH:32 --var EXPIRE:60 --var RATE_MAX:10000 > ../wrangler.log 2>&1 &
+          for attempt in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:8787/ && break; sleep 1; done
+          cd ..
+          WORKER_URL=http://127.0.0.1:8787 python3 tests/compatibility.py || { cat wrangler.log; exit 1; }
 
   worker:
     runs-on: ubuntu-24.04

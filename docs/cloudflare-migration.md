@@ -8,8 +8,8 @@ https://ampcode.com/threads/T-7ef64b2c-8570-41ac-8e77-4f860998aa75
 
 The shared host `dev.tk.sg` has a failing SATA link on its only disk and has
 hung twice (2026-10-10, 2026-10-12). code.tk.sg moves off it to Cloudflare as a
-TypeScript Worker. The Rust server stays in the repo, untouched, until cutover
-is verified; it is removed in a later PR.
+TypeScript Worker. The Rust server stayed in the repo until cutover was
+verified and was then removed, along with the Docker/Compose deployment.
 
 ## Target architecture
 

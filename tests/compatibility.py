@@ -1,128 +1,30 @@
-"""Black-box contracts, using real HTTP and isolated legacy-format storage.
+"""Black-box HTTP contracts for the code.tk.sg Worker.
 
-Run after cargo build: python3 tests/compatibility.py
-Requires redis-server and redis-cli. Never connects to production Redis.
-
-For local wrangler dev, see worker/README.md and set WORKER_URL. This mode
-runs HTTP contracts only; D1/expiry/rate/collision contracts live in Vitest.
+Run against local wrangler dev (see worker/README.md):
+    WORKER_URL=http://127.0.0.1:8787 python3 tests/compatibility.py
+Storage, expiry, rate-limit and collision contracts live in the Worker's
+Vitest suite (worker/test/compatibility.test.ts).
 """
-import hashlib
 import http.client
 import json
 import os
 from pathlib import Path
-import shlex
-import socket
 import struct
-import subprocess
-import tempfile
-import time
 import unittest
-from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def free_port():
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
-
-
 class Server(unittest.TestCase):
-    backend = "file"
-    rate = None
-    options = {}
-
     @classmethod
     def setUpClass(cls):
-        if os.environ.get("WORKER_URL"):
-            endpoint = urlsplit(os.environ["WORKER_URL"])
-            if endpoint.scheme != "http" or endpoint.hostname != "127.0.0.1":
-                raise RuntimeError("WORKER_URL must be http://127.0.0.1:<port> (wrangler dev --ip 127.0.0.1)")
-            cls.port = endpoint.port or 80
-            cls.backend = "worker"
-            cls.legacy_key = "legacykey"
-            cls.legacy_data = "old paste\né <&>\n"
-            return
-        cls.temp = tempfile.TemporaryDirectory()
-        cls.addClassCleanup(cls.temp.cleanup)
-        cls.work = Path(cls.temp.name)
-        for name in ["static", "about.md"]:
-            (cls.work / name).symlink_to(ROOT / name)
-        cls.port = free_port()
-        config = {
-            "host": "127.0.0.1", "port": cls.port,
-            "keyLength": 10, "maxLength": 32,
-            "keyGenerator": {"type": "phonetic"},
-            "staticMaxAge": 86400, "logging": {"level": "error"},
-            "baseUrl": "https://code.tk.sg",
-            "documents": {"about": "./about.md"},
-            "storage": {"type": cls.backend},
-        }
-        config.update(cls.options)
-        if cls.rate:
-            config["rateLimits"] = cls.rate
+        endpoint = urlsplit(os.environ.get("WORKER_URL", ""))
+        if endpoint.scheme != "http" or endpoint.hostname != "127.0.0.1":
+            raise RuntimeError("Set WORKER_URL=http://127.0.0.1:<port> (npm --prefix worker run dev:compat)")
+        cls.port = endpoint.port or 80
         cls.legacy_key = "legacykey"
         cls.legacy_data = "old paste\né <&>\n"
-        if cls.backend == "redis":
-            cls.redis_port = free_port()
-            redis = subprocess.Popen([
-                "redis-server", "--bind", "127.0.0.1", "--port", str(cls.redis_port),
-                "--save", "", "--appendonly", "no", "--dir", cls.temp.name,
-            ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            cls.addClassCleanup(cls.stop, redis)
-            for _ in range(100):
-                try:
-                    if cls.redis("PING").strip() == "PONG":
-                        break
-                except subprocess.CalledProcessError:
-                    pass
-                time.sleep(0.05)
-            else:
-                raise RuntimeError("Test Redis did not start")
-            config["storage"].update({"expire": 60, "redisOptions": {
-                "host": "127.0.0.1", "port": cls.redis_port, "db": 2,
-            }})
-            cls.redis("SET", cls.legacy_key, cls.legacy_data, "EX", "20")
-        else:
-            config["storage"]["path"] = "./data"
-            (cls.work / "data").mkdir()
-            digest = hashlib.md5(cls.legacy_key.encode()).hexdigest()
-            (cls.work / "data" / digest).write_text(cls.legacy_data)
-        (cls.work / "config.json").write_text(json.dumps(config))
-        # Override the executable for release and Docker test builds.
-        command = shlex.split(os.environ.get("SERVER_COMMAND", str(ROOT / "target/debug/code-tk")))
-        cls.log = open(cls.work / "server.log", "w+")
-        cls.addClassCleanup(cls.log.close)
-        cls.process = subprocess.Popen(command, cwd=cls.work, stdout=cls.log, stderr=cls.log)
-        cls.addClassCleanup(cls.stop, cls.process)
-        for _ in range(200):
-            try:
-                with socket.create_connection(("127.0.0.1", cls.port), timeout=0.1):
-                    return
-            except OSError:
-                if cls.process.poll() is not None:
-                    break
-                time.sleep(0.05)
-        cls.log.seek(0)
-        raise RuntimeError("Test server did not start: " + cls.log.read())
-
-    @staticmethod
-    def stop(process):
-        process.terminate()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait()
-
-    @classmethod
-    def redis(cls, *args):
-        return subprocess.check_output([
-            "redis-cli", "-p", str(cls.redis_port), "-n", "2", "--raw", *args
-        ], text=True, stderr=subprocess.DEVNULL)
 
     def request(self, path, body=None, content_type="text/plain", method=None, headers=None):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=20)
@@ -134,7 +36,7 @@ class Server(unittest.TestCase):
         return result
 
 
-class FileContracts(Server):
+class HttpContracts(Server):
     def test_existing_storage_and_extension_urls(self):
         status, _, body = self.request("/documents/legacykey.py?unused[x]=1")
         self.assertEqual(status, 200)
@@ -165,11 +67,6 @@ class FileContracts(Server):
         key = json.loads(body)["key"]
         self.assertRegex(key, r"^[a-z]{10}$")
         self.assertEqual(self.request("/raw/" + key)[2].decode(), value)
-        if self.backend == "file":
-            self.assertEqual((self.work / "data" / hashlib.md5(key.encode()).hexdigest()).read_text(), value)
-        elif self.backend == "redis":
-            self.assertEqual(self.redis("GET", key).rstrip("\n"), value)
-            self.assertGreater(int(self.redis("TTL", key)), 55)
         for data, expected, message in [
             (b"", 411, "Length required."),
             ((value + "x").encode(), 413, "Document exceeds maximum length."),
@@ -282,30 +179,15 @@ class FileContracts(Server):
         self.assertEqual(self.request("/application.css")[2], (ROOT / "static/application.css").read_bytes())
         self.assertEqual(self.request("/nested/missing")[0], 404)
         self.assertEqual(self.request("/raw/about")[2], (ROOT / "about.md").read_bytes())
-        if self.backend == "file":
-            data = self.work / "data"
-            data.rename(self.work / "saved-data")
-            data.write_text("not a directory")
-            try:
-                self.assertEqual(self.request("/raw/about")[0], 404)
-                status, _, body = self.request("/documents", b"cannot save")
-                self.assertEqual(status, 500)
-                self.assertEqual(json.loads(body), {
-                    "message": "Internal server error occured while adding document."
-                })
-            finally:
-                data.unlink()
-                (self.work / "saved-data").rename(data)
-
     def test_preview_metadata_and_png(self):
         status, headers, body = self.request("/legacykey.py")
         self.assertEqual(status, 200)
         self.assertEqual(headers["Cache-Control"], "public, max-age=300")
-        origin = (os.environ["WORKER_URL"].rstrip("/") if self.backend == "worker" else "https://code.tk.sg")
+        origin = os.environ["WORKER_URL"].rstrip("/")
         self.assertIn(f'content="{origin}/preview/legacykey.py.png"'.encode(), body)
         self.assertIn('content="old paste é &lt;&amp;&gt;"'.encode(), body)
 
-    @unittest.skipIf(os.environ.get("WORKER_URL") and os.environ.get("WORKER_SKIP_PREVIEW") == "1",
+    @unittest.skipIf(os.environ.get("WORKER_SKIP_PREVIEW") == "1",
                      "Phase-1 Worker preview stub; PNG requires phase-2 integration")
     def test_preview_png(self):
         for suffix in [".py", ".txt", ".unknown", ""]:
@@ -330,70 +212,7 @@ class FileContracts(Server):
         self.assertEqual(headers["Content-Type"], "text/plain; charset=utf-8")
 
 
-class RedisContracts(FileContracts):
-    backend = "redis"
-
-    def test_sliding_expiry_only_on_document_reads(self):
-        self.redis("SET", "ttlkey", "unchanged", "EX", "20")
-        for path in ["/ttlkey.py", "/preview/ttlkey.py.png"]:
-            self.assertEqual(self.request(path)[0], 200)
-            self.assertLessEqual(int(self.redis("TTL", "ttlkey")), 20)
-        self.assertEqual(self.request("/documents/ttlkey.py")[0], 200)
-        self.assertGreater(int(self.redis("TTL", "ttlkey")), 55)
-        self.redis("EXPIRE", "ttlkey", "20")
-        self.assertEqual(self.request("/raw/ttlkey")[0], 200)
-        self.assertGreater(int(self.redis("TTL", "ttlkey")), 55)
-        self.assertEqual(int(self.redis("TTL", "about")), -1)
-        self.request("/raw/about")
-        self.assertEqual(int(self.redis("TTL", "about")), -1)
-
-
-class RateLimitContracts(Server):
-    rate = {"windowMs": 60000, "max": 2}
-
-    def test_all_routes_share_limit_without_trusting_forwarded_headers(self):
-        self.assertEqual(self.request("/")[0], 200)
-        self.assertEqual(self.request("/raw/about")[0], 200)
-        status, headers, body = self.request("/application.css", headers={"X-Forwarded-For": "8.8.8.8"})
-        self.assertEqual(status, 429)
-        self.assertEqual(body, b"Too many requests, please try again later.")
-        self.assertEqual(headers["X-RateLimit-Limit"], "2")
-        self.assertEqual(headers["X-RateLimit-Remaining"], "0")
-        self.assertGreaterEqual(int(headers["Retry-After"]), 1)
-
-
-class RateLimitResetContracts(Server):
-    rate = {"windowMs": 500, "max": 1}
-
-    def test_window_resets(self):
-        self.assertEqual(self.request("/")[0], 200)
-        time.sleep(0.6)
-        self.assertEqual(self.request("/")[0], 200)
-
-
-class CollisionContracts(Server):
-    options = {"keyLength": 1, "keyGenerator": {"type": "random", "keyspace": "AB"}}
-
-    def test_simultaneous_saves_never_overwrite_and_exhaustion_fails(self):
-        def save(value):
-            status, _, body = self.request("/documents", value)
-            self.assertEqual(status, 200)
-            return json.loads(body)["key"], value
-        with ThreadPoolExecutor(max_workers=2) as workers:
-            saved = list(workers.map(save, [b"first", b"second"]))
-        self.assertEqual({key for key, _ in saved}, {"A", "B"})
-        self.assertEqual(self.request("/documents", b"must not replace")[0], 503)
-        for key, value in saved:
-            self.assertEqual(self.request("/raw/" + key)[2], value)
-
-
-class RedisCollisionContracts(CollisionContracts):
-    backend = "redis"
-
-
 class HostOriginContracts(Server):
-    options = {"baseUrl": None}
-
     def test_request_host_is_used_and_content_is_escaped(self):
         status, _, body = self.request("/documents", b'\"><script>alert(1)</script>')
         self.assertEqual(status, 200)
@@ -405,27 +224,5 @@ class HostOriginContracts(Server):
         self.assertNotIn(b'<script>alert(1)</script>', html)
 
 
-class ImplicitTypeContracts(Server):
-    options = {"storage": {}, "keyGenerator": {"keyspace": "Q7"}}
-
-    def test_legacy_implicit_file_and_random_types(self):
-        self.assertEqual(self.request("/raw/legacykey")[2].decode(), self.legacy_data)
-        status, _, body = self.request("/documents", b"implicit defaults")
-        self.assertEqual(status, 200)
-        key = json.loads(body)["key"]
-        self.assertRegex(key, r"^[Q7]{10}$")
-        self.assertEqual(self.request("/raw/" + key)[2], b"implicit defaults")
-
-
 if __name__ == "__main__":
-    if os.environ.get("WORKER_URL"):
-        # Never run legacy storage mutations or launch Rust/Redis in Worker mode.
-        result = unittest.TextTestRunner(verbosity=2).run(
-            unittest.TestSuite([
-                unittest.defaultTestLoader.loadTestsFromTestCase(FileContracts),
-                unittest.defaultTestLoader.loadTestsFromTestCase(HostOriginContracts),
-            ])
-        )
-        raise SystemExit(not result.wasSuccessful())
-    else:
-        unittest.main(verbosity=2)
+    unittest.main(verbosity=2)

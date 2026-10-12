@@ -4,10 +4,10 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-echo 'Preparing system tools and Redis (development/test only)'
+echo 'Preparing system tools (development/test only)'
 SECONDS=0
 missing=()
-for package in ca-certificates curl xz-utils redis-server build-essential python3; do
+for package in ca-certificates curl xz-utils python3; do
   dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed' || missing+=("$package")
 done
 if ((${#missing[@]})); then
@@ -16,8 +16,8 @@ if ((${#missing[@]})); then
 fi
 echo "System tools ready (${SECONDS}s)"
 
-# Match the Dockerfile's Node 20 major without replacing the orb's own Node.
-node_version=20.20.0
+# Wrangler needs Node 22+; install a pinned copy without replacing the orb's own Node.
+node_version=22.20.0
 node_home="$HOME/.local/share/code-tk-node/node-v${node_version}-linux-$(uname -m | sed 's/x86_64/x64/; s/aarch64/arm64/')"
 if [[ ! -x "$node_home/bin/node" ]]; then
   echo "Installing Node $node_version"
@@ -54,37 +54,9 @@ SECONDS=0
 npm ci --include=dev --prefer-offline --no-audit --no-fund
 echo "Dependencies ready (${SECONDS}s)"
 
-echo 'Installing the pinned Rust toolchain'
+echo 'Installing Worker dependencies and building browser assets'
 SECONDS=0
-if [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
-  rustup_script="$(mktemp)"
-  curl -fsSL https://sh.rustup.rs -o "$rustup_script"
-  sh "$rustup_script" -y --profile minimal --default-toolchain none
-  rm -f "$rustup_script"
-fi
-export PATH="$HOME/.cargo/bin:$PATH"
-rustup show active-toolchain
-rust_profile_marker="# code.tk.sg orb Rust toolchain"
-if ! grep -Fqx "$rust_profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
-  cat >> "$HOME/.bash_profile" <<EOF
-
-$rust_profile_marker
-case "\$PWD/" in
-  "$repo_root/"*) export PATH="$HOME/.cargo/bin:\$PATH" ;;
-esac
-EOF
-fi
-echo "Rust ready (${SECONDS}s)"
-
-echo 'Building browser assets, Rust server, and preparing local configuration'
-SECONDS=0
+npm --prefix worker ci --include=dev --prefer-offline --no-audit --no-fund
 npm run build
-cargo build --locked
-if [[ ! -f config.json ]]; then
-  if [[ -f config.js ]]; then
-    node scripts/convert-config.js config.js config.json
-  else
-    cp -- example.config.json config.json
-  fi
-fi
-echo "Build and configuration ready (${SECONDS}s)"
+npm --prefix worker run db:init
+echo "Worker ready (${SECONDS}s)"

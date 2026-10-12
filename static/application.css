@@ -93,7 +93,7 @@ textarea, #linenos, #box {
 /* textarea */
 
 textarea {
-	font-weight: 500; /* Plex Regular reads too faint while typing */
+	font-weight: 500; /* Plex Regular reads too faint */
 	background: transparent;
 	border: 0px;
 	color: var(--text);
@@ -130,6 +130,7 @@ textarea {
 	border: 0px;
 	outline: none;
 	font-family: var(--code-font);
+	font-weight: 500; /* Plex Regular reads too faint */
 	font-size: var(--code-size);
   overflow: inherit;
 }
@@ -289,6 +290,8 @@ body.key-overlay #box .key-spacer {
 .duplicate { --icon: url(icons/copy-plus.svg); }
 .copy { --icon: url(icons/copy.svg); }
 .more { --icon: url(icons/ellipsis.svg); }
+.fix-indent { --icon: url(icons/indent.svg); }
+#box2 .fix-indent[hidden] { display: none; }
 #raw-link { --icon: url(icons/file-text.svg); }
 #download-link { --icon: url(icons/download.svg); }
 .github { --icon: url(icons/github.svg); }

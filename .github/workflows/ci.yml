@@ -25,11 +25,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      - name: Install test dependencies
+        uses: ./.github/actions/install-dependencies
       - name: Frontend build and tests
-        run: npm ci && npm run build && npm test
+        run: npm run build && npm test
       - name: HTTP contracts against local wrangler dev
         run: |
-          npm --prefix worker ci
           cd worker
           npm run db:init
           npx wrangler d1 execute DB --local --command "INSERT INTO documents VALUES ('legacykey', 'old paste' || char(10) || 'é <&>' || char(10), NULL)"
@@ -49,11 +50,13 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      - name: Install test dependencies
+        uses: ./.github/actions/install-dependencies
       - name: Build static assets
-        run: npm ci && npm run build
+        run: npm run build
       - name: Worker typecheck, tests and bundle
         working-directory: worker
-        run: npm ci && npm run typecheck && npm test && npm run build
+        run: npm run typecheck && npm test && npm run build
 
   # Deploys main to production after both test jobs pass, then smoke-tests it.
   # Needs a CLOUDFLARE_API_TOKEN secret (repository or "production" environment).
@@ -90,9 +93,14 @@ jobs:
           else
             echo 'ready=true' >> "$GITHUB_OUTPUT"
           fi
+      - name: Install deployment dependencies (no lifecycle scripts)
+        if: steps.creds.outputs.ready == 'true'
+        uses: ./.github/actions/install-dependencies
+        with:
+          install-mode: ignore-scripts
       - name: Build (no dependency install scripts)
         if: steps.creds.outputs.ready == 'true'
-        run: npm ci --ignore-scripts && npm run build && npm --prefix worker ci --ignore-scripts
+        run: npm run build
       - name: Production migrations and deploy
         if: steps.creds.outputs.ready == 'true'
         working-directory: worker

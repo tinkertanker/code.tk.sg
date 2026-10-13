@@ -1,0 +1,47 @@
+name: Install dependencies
+description: Cache npm downloads and clean-install both dependency trees before builds or tests.
+inputs:
+  install-mode:
+    description: 'Install policy: test (default lifecycle scripts) or ignore-scripts (deployment).'
+    default: test
+runs:
+  using: composite
+  steps:
+    - name: Identify npm cache and runtime
+      id: runtime
+      shell: bash
+      run: |
+        echo "node=$(node --version)" >> "$GITHUB_OUTPUT"
+        echo "npm=$(npm --version)" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:?GitHub hosted runner image family is required}" >> "$GITHUB_OUTPUT"
+        echo "cache=$(npm config get cache)" >> "$GITHUB_OUTPUT"
+    - name: Restore npm downloads
+      id: cache
+      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        # Do not cache npm credentials/config, logs, or installed dependency trees.
+        path: ${{ steps.runtime.outputs.cache }}/_cacache
+        key: npm-downloads-v1-${{ inputs.install-mode }}-${{ runner.os }}-${{ runner.arch }}-${{ steps.runtime.outputs.image }}-${{ steps.runtime.outputs.node }}-${{ steps.runtime.outputs.npm }}-${{ hashFiles('package.json', 'package-lock.json', '.npmrc', 'worker/package.json', 'worker/package-lock.json', 'worker/.npmrc', '.github/actions/install-dependencies/**', '.github/workflows/ci.yml') }}
+    - name: Clean-install both dependency trees
+      shell: bash
+      env:
+        INSTALL_MODE: ${{ inputs.install-mode }}
+        npm_config_cache: ${{ steps.runtime.outputs.cache }}
+      run: |
+        case "$INSTALL_MODE" in
+          test)
+            npm ci
+            npm --prefix worker ci
+            ;;
+          ignore-scripts)
+            npm ci --ignore-scripts
+            npm --prefix worker ci --ignore-scripts
+            ;;
+          *) echo "Unsupported install mode: $INSTALL_MODE" >&2; exit 1 ;;
+        esac
+    - name: Save npm downloads
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ${{ steps.runtime.outputs.cache }}/_cacache
+        key: ${{ steps.cache.outputs.cache-primary-key }}

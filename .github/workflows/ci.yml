@@ -18,6 +18,11 @@ jobs:
   build-and-test:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Temporary draft-PR experiment: compare full jobs on identical revisions.
+    strategy:
+      fail-fast: false
+      matrix:
+        dependencies: [baseline, cached]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -26,7 +31,11 @@ jobs:
         with:
           node-version: 22
       - name: Install test dependencies
+        if: matrix.dependencies == 'cached'
         uses: ./.github/actions/install-dependencies
+      - name: Baseline clean installs (no cache action)
+        if: matrix.dependencies == 'baseline'
+        run: npm ci && npm --prefix worker ci
       - name: Frontend build and tests
         run: npm run build && npm test
       - name: HTTP contracts against local wrangler dev
@@ -39,10 +48,19 @@ jobs:
           curl -sf -o /dev/null http://127.0.0.1:8787/ || { echo 'wrangler dev did not start'; cat ../wrangler.log; exit 1; }
           cd ..
           WORKER_URL=http://127.0.0.1:8787 python3 tests/compatibility.py || { cat wrangler.log; exit 1; }
+      - name: Intentional downstream failure (first PR attempt only)
+        if: github.event_name == 'pull_request' && github.run_attempt == 1 && matrix.dependencies == 'cached'
+        run: |
+          echo 'Measurement-only failure after cache save and all real tests; rerun proves persistence.'
+          exit 23
 
   worker:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dependencies: [baseline, cached]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,12 +69,53 @@ jobs:
         with:
           node-version: 22
       - name: Install test dependencies
+        if: matrix.dependencies == 'cached'
         uses: ./.github/actions/install-dependencies
+      - name: Baseline clean installs (no cache action)
+        if: matrix.dependencies == 'baseline'
+        run: npm ci && npm --prefix worker ci
       - name: Build static assets
         run: npm run build
       - name: Worker typecheck, tests and bundle
         working-directory: worker
         run: npm run typecheck && npm test && npm run build
+      - name: Intentional downstream failure (first PR attempt only)
+        if: github.event_name == 'pull_request' && github.run_attempt == 1 && matrix.dependencies == 'cached'
+        run: |
+          echo 'Measurement-only failure after cache save and all real tests; rerun proves persistence.'
+          exit 23
+
+  # Temporary, unprivileged deployment-install comparison: never migrates or deploys.
+  deployment-build-measurement:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        dependencies: [baseline, cached]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install deployment dependencies (no lifecycle scripts)
+        if: matrix.dependencies == 'cached'
+        uses: ./.github/actions/install-dependencies
+        with:
+          install-mode: ignore-scripts
+      - name: Baseline clean installs (no cache action or lifecycle scripts)
+        if: matrix.dependencies == 'baseline'
+        run: npm ci --ignore-scripts && npm --prefix worker ci --ignore-scripts
+      - name: Frontend build and Worker dry-run only
+        run: npm run build && npm --prefix worker run build
+      - name: Intentional downstream failure (first PR attempt only)
+        if: github.run_attempt == 1 && matrix.dependencies == 'cached'
+        run: |
+          echo 'Measurement-only failure after script-disabled cache save and dry-run; no deployment.'
+          exit 23
 
   # Deploys main to production after both test jobs pass, then smoke-tests it.
   # Needs a CLOUDFLARE_API_TOKEN secret (repository or "production" environment).

@@ -1,6 +1,7 @@
 /* global describe, it */
 
 const { strictEqual, deepStrictEqual } = require('assert');
+const { execFileSync } = require('child_process');
 const { analyze } = require('../static/indent-fix');
 
 const types = result => result ? result.issues.map(issue => issue.type) : [];
@@ -42,6 +43,20 @@ describe('indentation fixing', function(){
 		deepStrictEqual(types(result), ['extra-indent']);
 		strictEqual(result.issues[0].width, 4);
 		strictEqual(result.fixed, 'def f():\n    return 1\n\nprint(f())\n');
+	});
+
+	it('handles long incompatible tab-preserving prefixes within a bounded time', function(){
+		this.timeout(5000);
+		// Isolate synchronous analysis so a quadratic regression cannot hang the suite.
+		execFileSync(process.execPath, ['-e', `
+			const { strictEqual } = require('assert');
+			const { analyze } = require(${JSON.stringify(require.resolve('../static/indent-fix'))});
+			const tabs = '\\t'.repeat(100000), spaces = ' '.repeat(100000);
+			const result = analyze(' ' + tabs + 'a\\n' + spaces + 'b', {language: 'go'});
+			strictEqual(result.issues[0].width, 1);
+			strictEqual(result.fixed, tabs + 'a\\n' + spaces.slice(1) + 'b');
+			strictEqual(analyze('\\ta\\n b', {language: 'go'}), null);
+		`], { timeout: 3000 });
 	});
 
 	it('fixes several problems in order', function(){

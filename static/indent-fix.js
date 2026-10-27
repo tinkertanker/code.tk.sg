@@ -119,7 +119,9 @@
       if (isBlank(line)) return;
       var lead = leading(line);
       if (common === null) common = lead;
-      while (common && lead.indexOf(common) !== 0) common = common.slice(0, -1);
+      var shared = 0;
+      while (shared < common.length && shared < lead.length && common[shared] === lead[shared]) shared++;
+      common = common.slice(0, shared);
     });
     if (common) {
       lines = lines.map(function(line) {

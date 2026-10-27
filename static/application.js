@@ -220,6 +220,29 @@ haste.prototype.renderLines = function(html) {
   var line = '';
   var hasText = false;
   var tokens = html.match(/<[^>]*>|[^<\n]+|\n/g) || [];
+  // Budget highlighting before copying multiline scopes into each line. Plain
+  // text and line numbers survive the fallback; only syntax colours are lost.
+  var sizes = [], openSize = 0, markupSize = 0, spans = 0;
+  for (var j = 0; j < tokens.length; j++) {
+    var token = tokens[j];
+    if (token === '\n') {
+      markupSize += openSize + sizes.length * 7;
+      spans += sizes.length;
+    } else if (token.indexOf('</') === 0) {
+      openSize -= sizes.pop() || 0;
+      markupSize += token.length;
+    } else if (token.charAt(0) === '<') {
+      sizes.push(token.length);
+      openSize += token.length;
+      markupSize += token.length;
+      spans++;
+    }
+    if (spans > 10000 || markupSize > 1000000) {
+      // highlight.js already escaped the text; do not decode its entities.
+      tokens = html.replace(/<[^>]*>/g, '').match(/[^\n]+|\n/g) || [];
+      break;
+    }
+  }
   var flush = function() {
     out += '<span class="line">' + (hasText ? line + new Array(open.length + 1).join('</span>') : '<br/>') + '</span>';
     line = open.join('');

@@ -13,7 +13,9 @@ export async function upload(request: Request, limit: number): Promise<string> {
   const contentType = request.headers.get('content-type') || '';
   const multipart = contentType.split(';')[0].trim().toLowerCase() === 'multipart/form-data';
   const boundary = multipart ? getMultipartBoundary(contentType) : undefined;
-  if (multipart && !boundary) throw invalidForm();
+  // RFC 2046 bchars: 1–70 ASCII characters, with no trailing space. This also
+  // keeps the parser's byte-sized search skips from overflowing to zero.
+  if (multipart && (!boundary || !/^[0-9A-Za-z'()+_,./:=? -]{0,69}[0-9A-Za-z'()+_,./:=?-]$/.test(boundary))) throw invalidForm();
   const parser = boundary ? new MultipartParser(boundary, { maxFileSize: limit || Infinity }) : null;
   const opening = boundary ? encoder.encode(`--${boundary}`) : null;
   let preamble = new Uint8Array(0);

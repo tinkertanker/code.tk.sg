@@ -37,6 +37,16 @@ describe('preview metadata compatibility', () => {
     expect(html).toContain('content="&lt;&quot;&amp;&gt;"');
   });
 
+  it('inserts replacement metacharacters literally without copying page scripts', () => {
+    const data = "$` $' $$ $& <\"&>";
+    const html = injectMeta('<head><script>bootstrap()</script></head><body>paste</body>', {...opts, data});
+    expect(html.match(/<script>/g)).toHaveLength(1);
+    expect(html.match(/<body>/g)).toHaveLength(1);
+    expect(html.match(/<\/head>/g)).toHaveLength(1);
+    expect(html).toContain('property="og:description" content="$` $\' $$ $&amp; &lt;&quot;&amp;&gt;"');
+    expect(html).toContain('name="twitter:description" content="$` $\' $$ $&amp; &lt;&quot;&amp;&gt;"');
+  });
+
   it('truncates at UTF-16 boundaries including a split astral character', () => {
     for (const [data, expected] of [
       ['a'.repeat(200), 'a'.repeat(200)],

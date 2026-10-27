@@ -42,7 +42,7 @@ export function injectMeta(indexHtml: string, opts: {key: string, data: string, 
     ['name', 'twitter:description', description],
     ['name', 'twitter:image', opts.imageUrl],
   ].map(([attr, name, value]) => `\t\t<meta ${attr}="${name}" content="${escape(value)}" />`).join('\n');
-  return indexHtml.replaceAll('</head>', `${tags}\n\t</head>`);
+  return indexHtml.replaceAll('</head>', () => `${tags}\n\t</head>`);
 }
 
 const languages: Record<string, string> = {

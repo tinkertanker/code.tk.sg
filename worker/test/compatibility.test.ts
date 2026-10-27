@@ -124,6 +124,25 @@ describe('HTTP compatibility with real D1 and Static Assets', () => {
     expect(await (await request('/raw/' + await save(split, ct))).text()).toBe('é' + 'x'.repeat(30));
   });
 
+  it('enforces MIME boundary length and characters before parsing multipart bodies', async () => {
+    for (const boundary of ['a'.repeat(71), 'a'.repeat(252), 'bad@boundary', 'bad\tboundary', 'badé', 'trailing ']) {
+      const body = `--${boundary}\r\nContent-Disposition: form-data; name="data"\r\n\r\nx\r\n--${boundary}--\r\n`;
+      const response = await request('/documents', { method: 'POST', body,
+        headers: { 'content-type': `multipart/form-data; boundary="${boundary}"` } });
+      expect(response.status, JSON.stringify(boundary)).toBe(400);
+      expect(await response.json()).toEqual({ message: 'Invalid multipart request.' });
+    }
+    for (const boundary of ['a', 'a'.repeat(70), "AZaz09'()+_,-./:=? with space"]) {
+      const body = `--${boundary}\r\nContent-Disposition: form-data; name="data"\r\n\r\nvalid\r\n--${boundary}--\r\n`;
+      const split = new ReadableStream<Uint8Array>({ start(c) {
+        for (const byte of new TextEncoder().encode(body)) c.enqueue(new Uint8Array([byte]));
+        c.close();
+      } });
+      const key = await save(split, `multipart/form-data; boundary="${boundary}"`);
+      expect(await (await request('/raw/' + key)).text()).toBe('valid');
+    }
+  });
+
   it('multipart preamble and field limits reject without EOF', async () => {
     const ct = 'multipart/form-data; boundary=test';
     const valid = 'ignored preamble\r\n'.repeat(200) + '--test\r\nContent-Disposition: form-data; name="data"\r\n\r\n' + 'x'.repeat(32) + '\r\n--test--\r\n';

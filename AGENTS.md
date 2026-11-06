@@ -2,10 +2,10 @@
 
 ## Architecture
 
-code.tk.sg is a Cloudflare Worker (`worker/`) serving the browser UI in
-`static/`, with pastes in Cloudflare D1. There is no server to SSH into; the old
-Rust/Docker deployment on `dev.tk.sg` was retired on 2026-10-12. See
-`docs/operations.md`.
+code.tk.sg is a Cloudflare Worker serving the browser UI, with pastes in
+Cloudflare D1. There is no server to SSH into; the old Rust/Docker deployment on
+`dev.tk.sg` was retired on 2026-10-12. `docs/operations.md` has deploy commands,
+post-deploy checks and rollback.
 
 ## Working locally
 
@@ -18,11 +18,10 @@ Rust/Docker deployment on `dev.tk.sg` was retired on 2026-10-12. See
 ## Deploying
 
 - Merging to `main` runs the CI deploy job, which updates production whenever
-  the `CLOUDFLARE_API_TOKEN` secret is set (see `docs/operations.md`), so
+  the `CLOUDFLARE_API_TOKEN` secret is set, so
   merging needs the same approval as deploying. There is no staging
   environment; run the full test suites before merging.
-- Manual deploys require explicit user approval, per deploy. Deploy only `main`;
-  see `docs/operations.md` for commands, post-deploy checks and rollback.
+- Manual deploys require explicit user approval, per deploy. Deploy only `main`.
 - Credentials: the `CLOUDFLARE_API_KEY_TT` secret is an API token for the
   Tinkertanker account (export it as `CLOUDFLARE_API_TOKEN`). Never print it.
 - Never touch D1 production data (imports, deletes, time-travel restores) without
